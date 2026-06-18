@@ -1,0 +1,450 @@
+{
+  "name": "Daily Mortgage News Digest (Gemini + Google Sheets)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "6 AM Daily (Mon–Fri)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Runs 10:00 UTC = 6:00 AM Eastern, weekdays only. For 7 days use: 0 10 * * *. Adjust hour for other timezones (e.g. 11 = 7 AM Eastern)."
+    },
+
+    {
+      "parameters": {
+        "operation": "readAllMatchingRows",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Subscribers", "mode": "name" },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "active",
+              "lookupValue": "TRUE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-subscribers",
+      "name": "Fetch Active Subscribers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Replace YOUR_GOOGLE_SHEET_ID with your actual Sheet ID from the URL. Reads by header name 'active' = TRUE so adding new columns never breaks this node."
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={{ $credentials.googleGeminiApi.apiKey }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": {
+          "system_instruction": {
+            "parts": [
+              {
+                "text": "You are a senior mortgage industry analyst producing a daily briefing for mortgage professionals. You have deep expertise in MBS markets, Fed policy, housing economics, and the mortgage origination business. You write with precision and authority. You never speculate beyond what the data supports, but you do draw clear analytical conclusions. Your audience — loan officers, brokers, lender executives, and real estate agents — needs actionable intelligence, not summaries they could find themselves."
+              }
+            ]
+          },
+          "contents": [
+            {
+              "role": "user",
+              "parts": [
+                {
+                  "text": "Today's date: {{ $now.format('EEEE, MMMM d, yyyy') }}\n\nUse Google Search to find TODAY'S most important mortgage and real estate news. Search specifically across these sources:\n- HousingWire (housingwire.com)\n- Mortgage News Daily (mortgagenewsdaily.com)\n- MBS Live (mbslive.com)\n- National Mortgage Professional (nationalmortgageprofessional.com)\n- Federal Reserve (federalreserve.gov)\n- CFPB (consumerfinance.gov)\n- Freddie Mac (freddiemac.com)\n- Fannie Mae (fanniemae.com)\n- Mortgage Bankers Association (mba.org)\n- National Association of Realtors (nar.realtor)\n- Bloomberg Real Estate section\n- Wall Street Journal Housing section\n\nFocus on: mortgage rate movements, MBS pricing/spreads, Fed statements or data, housing inventory, purchase/refi application volume, GSE news, regulatory changes, lender layoffs/expansions, housing starts/permits, CPI/PCE/jobs data affecting rates.\n\nFor each story, reason carefully about downstream consequences:\n- FIRST ORDER EFFECTS: Direct, immediate consequences — what changes right away and for whom (e.g. 'rates rise X bps', 'lenders tighten guidelines', 'refi volume drops')\n- SECOND ORDER EFFECTS: Downstream ripple effects that follow — less obvious, often delayed, often hitting different players (e.g. 'reduced refi volume pressures servicer revenues', 'tighter guidelines shift demand toward FHA', 'builder sentiment softens if buyer traffic falls')\n\nOnly include effects when the story has meaningful downstream consequences. Routine data releases with no surprises do not need effects. High-importance stories should almost always have them. Be specific and actionable.\n\nReturn ONLY valid JSON — no markdown, no code fences, no preamble:\n{\n  \"date\": \"{{ $now.format('EEEE, MMMM d, yyyy') }}\",\n  \"subject\": \"catchy but professional email subject line under 60 chars\",\n  \"marketSnapshot\": {\n    \"narrative\": \"3-4 sentence market overview written for mortgage pros\",\n    \"rates\": [\n      { \"label\": \"30-YR FIXED\", \"value\": \"X.XX%\", \"change\": \"+X bps\" },\n      { \"label\": \"15-YR FIXED\", \"value\": \"X.XX%\", \"change\": \"+X bps\" },\n      { \"label\": \"10-YR TREASURY\", \"value\": \"X.XX%\", \"change\": \"+X bps\" },\n      { \"label\": \"MBS 6.0 COUPON\", \"value\": \"XX-XX\", \"change\": \"+X ticks\" },\n      { \"label\": \"FED FUNDS\", \"value\": \"X.XX–X.XX%\", \"change\": \"unchanged\" }\n    ]\n  },\n  \"stories\": [\n    {\n      \"source\": \"Source Name\",\n      \"sourceUrl\": \"https://full-article-url.com\",\n      \"headline\": \"Full headline\",\n      \"summary\": \"2-3 sentence summary explaining the story and why it matters to mortgage professionals\",\n      \"keyPoints\": [\"bullet 1\", \"bullet 2\", \"bullet 3\"],\n      \"effects\": {\n        \"hasEffects\": true,\n        \"firstOrder\": [\"Immediate effect 1\", \"Immediate effect 2\"],\n        \"secondOrder\": [\"Downstream ripple 1\", \"Downstream ripple 2\"]\n      },\n      \"importance\": \"high or normal\",\n      \"category\": \"rates | mbs | housing | fed | regulatory | gse | lender | economy\"\n    }\n  ],\n  \"watchList\": [\"Item 1 to watch today\", \"Item 2 to watch today\", \"Item 3 to watch today\"],\n  \"closingNote\": \"One sentence forward-looking observation for the day\"\n}\n\nFor stories without meaningful downstream effects, set effects to: { \"hasEffects\": false }.\nInclude 6-10 stories. Mark 1-3 as high importance. Order by importance then recency."
+                }
+              ]
+            }
+          ],
+          "tools": [{ "google_search": {} }],
+          "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 8192,
+            "responseMimeType": "application/json"
+          }
+        },
+        "options": {}
+      },
+      "id": "generate-digest",
+      "name": "Generate Digest via Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpQueryAuth": {
+          "name": "Google Gemini API Key"
+        }
+      },
+      "notes": "Calls Gemini 2.5 Pro with Google Search grounding. Credential: Query Auth, Name=key, Value=your Google AI Studio API key from aistudio.google.com/apikey"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\nif (response.error) {\n  throw new Error(`Gemini API error: ${response.error.code} — ${response.error.message}`);\n}\n\nconst candidates = response.candidates;\nif (!candidates || candidates.length === 0) {\n  const blockReason = response.promptFeedback?.blockReason;\n  throw new Error(`Gemini returned no candidates. Block reason: ${blockReason || 'unknown'}`);\n}\n\nconst candidate = candidates[0];\nconst finishReason = candidate.finishReason;\nif (finishReason && finishReason !== 'STOP' && finishReason !== 'MAX_TOKENS') {\n  throw new Error(`Gemini stopped unexpectedly: finishReason=${finishReason}`);\n}\n\nconst parts = candidate.content?.parts || [];\nconst rawText = parts.filter(p => p.text).map(p => p.text).join('').trim();\n\nif (!rawText) {\n  throw new Error('Gemini returned empty content.');\n}\n\nconst cleaned = rawText\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/\\s*```$/i, '')\n  .trim();\n\nlet digest;\ntry {\n  digest = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Failed to parse Gemini JSON: ${e.message}. Raw: ${cleaned.substring(0, 500)}`);\n}\n\nif (!digest.stories || !Array.isArray(digest.stories)) {\n  throw new Error('Invalid digest — missing stories array');\n}\n\ndigest.stories.sort((a, b) => {\n  if (a.importance === 'high' && b.importance !== 'high') return -1;\n  if (b.importance === 'high' && a.importance !== 'high') return 1;\n  return 0;\n});\n\nconst groundingMeta = candidate.groundingMetadata;\nif (groundingMeta?.webSearchQueries) {\n  digest._searchQueries = groundingMeta.webSearchQueries;\n}\n\nreturn [{ json: digest }];"
+      },
+      "id": "parse-digest",
+      "name": "Parse & Validate Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const digest = $input.first().json;\n\nconst SOURCE_COLORS = {\n  'HousingWire': '#1a3a5c',\n  'Mortgage News Daily': '#1a6b8a',\n  'MBS Live': '#b5451b',\n  'National Mortgage Professional': '#6b3fa0',\n  'Federal Reserve': '#2d6a4f',\n  'CFPB': '#1a472a',\n  'Freddie Mac': '#003087',\n  'Fannie Mae': '#00579b',\n  'Mortgage Bankers Association': '#8b1a1a',\n  'National Association of Realtors': '#005eb8',\n  'Bloomberg': '#ff6600',\n  'Wall Street Journal': '#000000',\n};\n\nconst CATEGORY_LABELS = {\n  rates: '📈 RATES', mbs: '📊 MBS', housing: '🏠 HOUSING',\n  fed: '🏦 FEDERAL RESERVE', regulatory: '📋 REGULATORY',\n  gse: '🏛️ GSE', lender: '🏢 LENDER NEWS', economy: '💼 ECONOMY',\n};\n\nconst getSourceColor = (source) => {\n  for (const [key, color] of Object.entries(SOURCE_COLORS)) {\n    if (source.toLowerCase().includes(key.toLowerCase())) return color;\n  }\n  return '#334155';\n};\n\nconst rateRows = (digest.marketSnapshot?.rates || []).map(r => {\n  const changeColor = r.change && r.change.startsWith('+') ? '#ef4444' : r.change && r.change.startsWith('-') ? '#22c55e' : '#64748b';\n  return `<tr>\n    <td style=\"padding:6px 12px 6px 0;font-family:'Courier New',monospace;font-size:11px;color:#94a3b8;letter-spacing:0.06em;border-bottom:1px solid #1e293b;\">${r.label}</td>\n    <td style=\"padding:6px 0;font-family:'Courier New',monospace;font-size:13px;color:#e2e8f0;font-weight:700;border-bottom:1px solid #1e293b;\">${r.value}</td>\n    <td style=\"padding:6px 0 6px 12px;font-family:'Courier New',monospace;font-size:11px;color:${changeColor};border-bottom:1px solid #1e293b;text-align:right;\">${r.change || ''}</td>\n  </tr>`;\n}).join('');\n\nconst storyCards = digest.stories.map((story) => {\n  const borderColor = getSourceColor(story.source);\n  const isTop = story.importance === 'high';\n  const categoryLabel = CATEGORY_LABELS[story.category] || (story.category || '').toUpperCase();\n\n  const keyPointsHtml = story.keyPoints?.length\n    ? `<ul style=\"margin:10px 0 0;padding-left:18px;\">${story.keyPoints.map(p =>\n        `<li style=\"font-size:12px;color:#94a3b8;line-height:1.6;margin-bottom:4px;\">${p}</li>`).join('')}</ul>`\n    : '';\n\n  const effects = story.effects;\n  const effectsHtml = effects?.hasEffects\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:14px;border-top:1px solid #1e3a5f;padding-top:12px;\">\n        <tr>\n          <td width=\"50%\" valign=\"top\" style=\"padding-right:10px;\">\n            <p style=\"margin:0 0 6px;font-size:9px;font-family:'Courier New',monospace;color:#c9a84c;letter-spacing:0.1em;\">⚡ 1ST ORDER EFFECTS</p>\n            <ul style=\"margin:0;padding-left:14px;\">${(effects.firstOrder || []).map(e =>\n              `<li style=\"font-size:11px;color:#94a3b8;line-height:1.6;margin-bottom:4px;\">${e}</li>`).join('')}</ul>\n          </td>\n          <td width=\"50%\" valign=\"top\" style=\"padding-left:10px;border-left:1px solid #1e293b;\">\n            <p style=\"margin:0 0 6px;font-size:9px;font-family:'Courier New',monospace;color:#6b7fa8;letter-spacing:0.1em;\">〜 2ND ORDER EFFECTS</p>\n            <ul style=\"margin:0;padding-left:14px;\">${(effects.secondOrder || []).map(e =>\n              `<li style=\"font-size:11px;color:#64748b;line-height:1.6;margin-bottom:4px;\">${e}</li>`).join('')}</ul>\n          </td>\n        </tr>\n      </table>`\n    : '';\n\n  const linkHtml = story.sourceUrl\n    ? `<a href=\"${story.sourceUrl}\" style=\"font-size:11px;color:#c9a84c;text-decoration:none;font-family:'Courier New',monospace;\">Read full story →</a>`\n    : '';\n\n  return `<div style=\"border-left:4px solid ${borderColor};padding:16px 18px;margin-bottom:16px;background:#0d1520;border-radius:0 6px 6px 0;\">\n    <div style=\"margin-bottom:8px;\">\n      <span style=\"display:inline-block;padding:2px 8px;background:${borderColor};color:white;font-size:9px;font-family:'Courier New',monospace;letter-spacing:0.08em;border-radius:3px;\">${story.source.toUpperCase()}</span>\n      ${isTop ? ' <span style=\"font-size:9px;color:#c9a84c;font-family:Courier New,monospace;letter-spacing:0.08em;font-weight:700;\">▲ TOP STORY</span>' : ''}\n      ${categoryLabel ? ` <span style=\"font-size:9px;color:#475569;font-family:Courier New,monospace;\">${categoryLabel}</span>` : ''}\n    </div>\n    <p style=\"margin:0 0 8px;font-size:14px;font-weight:700;color:#e2e8f0;line-height:1.4;\">${story.headline}</p>\n    <p style=\"margin:0 0 10px;font-size:13px;color:#94a3b8;line-height:1.65;\">${story.summary}</p>\n    ${keyPointsHtml}\n    ${effectsHtml}\n    ${linkHtml ? `<div style=\"margin-top:12px;\">${linkHtml}</div>` : ''}\n  </div>`;\n}).join('');\n\nconst watchItems = (digest.watchList || []).map(item =>\n  `<li style=\"font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:6px;\">${item}</li>`\n).join('');\n\nconst UNSUBSCRIBE_WEBHOOK = 'https://YOUR-N8N-INSTANCE/webhook/digest-unsubscribe';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n<title>${digest.subject || 'Daily Mortgage Digest'}</title>\n</head>\n<body style=\"margin:0;padding:0;background:#080e17;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#080e17;\"><tr><td align=\"center\" style=\"padding:24px 16px;\">\n<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;\">\n\n  <tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-bottom:3px solid #c9a84c;border-radius:8px 8px 0 0;padding:24px 28px;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n      <td><p style=\"margin:0 0 4px;font-size:10px;font-family:'Courier New',monospace;color:#c9a84c;letter-spacing:0.14em;\">DAILY BRIEFING</p>\n        <h1 style=\"margin:0 0 4px;font-size:22px;font-weight:800;color:white;letter-spacing:-0.02em;\">Mortgage &amp; Real Estate Digest</h1>\n        <p style=\"margin:0;font-size:11px;font-family:'Courier New',monospace;color:#475569;\">${digest.date}</p></td>\n      <td align=\"right\" style=\"vertical-align:middle;\"><span style=\"font-size:32px;\">🏠</span></td>\n    </tr></table>\n  </td></tr>\n\n  <tr><td style=\"background:#0d1520;border:1px solid #1e293b;border-top:none;padding:22px 28px;\">\n    <p style=\"margin:0 0 6px;font-size:10px;font-family:'Courier New',monospace;color:#c9a84c;letter-spacing:0.12em;\">MARKET SNAPSHOT</p>\n    <p style=\"margin:0 0 18px;font-size:13px;color:#cbd5e1;line-height:1.7;\">${digest.marketSnapshot?.narrative || ''}</p>\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${rateRows}</table>\n  </td></tr>\n\n  <tr><td style=\"background:#080e17;border:1px solid #1e293b;border-top:none;padding:22px 28px;\">\n    <p style=\"margin:0 0 16px;font-size:10px;font-family:'Courier New',monospace;color:#c9a84c;letter-spacing:0.12em;\">TODAY'S TOP STORIES</p>\n    ${storyCards}\n  </td></tr>\n\n  <tr><td style=\"background:#0d1520;border:1px solid #1e293b;border-top:none;padding:20px 28px;\">\n    <p style=\"margin:0 0 10px;font-size:10px;font-family:'Courier New',monospace;color:#c9a84c;letter-spacing:0.12em;\">WHAT TO WATCH TODAY</p>\n    <ul style=\"margin:0;padding-left:18px;\">${watchItems}</ul>\n    ${digest.closingNote ? `<p style=\"margin:14px 0 0;font-size:12px;color:#475569;font-style:italic;line-height:1.6;\">${digest.closingNote}</p>` : ''}\n  </td></tr>\n\n  <tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-top:none;border-radius:0 0 8px 8px;padding:16px 28px;text-align:center;\">\n    <p style=\"margin:0 0 4px;font-size:11px;color:#e2e8f0;font-weight:600;\">Mortgage Digest — JWH Finance</p>\n    <p style=\"margin:0 0 8px;font-size:10px;font-family:'Courier New',monospace;color:#475569;\">mortgage-digest@jwhfinance.com</p>\n    <p style=\"margin:0 0 6px;font-size:10px;font-family:'Courier New',monospace;color:#334155;letter-spacing:0.04em;\">Sources: HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA · NAR · Bloomberg · WSJ</p>\n    <p style=\"margin:0;font-size:10px;font-family:'Courier New',monospace;\"><a href=\"${UNSUBSCRIBE_WEBHOOK}?email={{subscriber_email}}\" style=\"color:#475569;text-decoration:underline;\">Unsubscribe</a></p>\n  </td></tr>\n\n</table></td></tr></table>\n</body></html>`;\n\nreturn [{ json: { html, subject: digest.subject || `🏠 Mortgage Digest — ${digest.date}`, digest } }];"
+      },
+      "id": "build-email",
+      "name": "Build HTML Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "notes": "Branded footer: 'Mortgage Digest — JWH Finance' with mortgage-digest@jwhfinance.com. Update UNSUBSCRIBE_WEBHOOK to your actual n8n webhook URL after deployment."
+    },
+
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-subscribers",
+      "name": "Split Subscribers",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1340, 300],
+      "notes": "Loops through each subscriber one at a time. Increase batchSize to 10-50 for larger lists if Gmail rate limits allow."
+    },
+
+    {
+      "parameters": {
+        "sendTo": "={{ $('Fetch Active Subscribers').item.json.email }}",
+        "subject": "={{ $('Build HTML Email').first().json.subject }}",
+        "emailType": "html",
+        "message": "={{ $('Build HTML Email').first().json.html.replace('{{subscriber_email}}', $('Fetch Active Subscribers').item.json.email) }}",
+        "options": {
+          "senderName": "Mortgage Digest | JWH Finance",
+          "replyTo": "mortgage-digest@jwhfinance.com",
+          "appendAttribution": false
+        }
+      },
+      "id": "send-email",
+      "name": "Send via Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1560, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Sends from the Gmail account authorized via OAuth2. To send FROM mortgage-digest@jwhfinance.com, first add it as a 'Send mail as' alias in Gmail Settings → Accounts and Import, verify it, then add 'fromEmail: mortgage-digest@jwhfinance.com' to the options above. The senderName shows 'Mortgage Digest | JWH Finance' in the inbox."
+    },
+
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Subscribers", "mode": "name" },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "email",
+              "lookupValue": "={{ $('Fetch Active Subscribers').item.json.email }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "values": [
+            { "fieldId": "last_sent_at", "fieldValue": "={{ $now.toISO() }}" },
+            { "fieldId": "send_count", "fieldValue": "={{ ($('Fetch Active Subscribers').item.json.send_count || 0) + 1 }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-send",
+      "name": "Log Send to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1780, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "digest-signup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "signup-webhook",
+      "name": "Signup Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 580],
+      "webhookId": "digest-signup",
+      "notes": "Receives signups from the landing page. After deploying, copy this URL and paste it into the WEBHOOK_URL variable in digest-signup.jsx"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst email = (body.email || '').toLowerCase().trim();\nconst firstName = (body.firstName || '').trim();\nconst lastName = (body.lastName || '').trim();\nconst company = (body.company || '').trim();\nconst role = (body.role || '').trim();\nconst roleOther = (body.roleOther || '').trim();\nconst phone = (body.phone || '').trim();\n\n// Required field validation\nif (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n  return [{ json: { valid: false, error: 'Valid email address is required.' } }];\n}\nif (!firstName) {\n  return [{ json: { valid: false, error: 'First name is required.' } }];\n}\nif (!lastName) {\n  return [{ json: { valid: false, error: 'Last name is required.' } }];\n}\nif (!role) {\n  return [{ json: { valid: false, error: 'Please select your role.' } }];\n}\n\nreturn [{ json: {\n  valid: true,\n  email,\n  firstName,\n  lastName,\n  fullName: `${firstName} ${lastName}`,\n  company,\n  role,\n  roleOther,\n  phone,\n  subscribedAt: new Date().toISOString(),\n  active: true,\n  send_count: 0,\n  last_sent_at: '',\n  source: 'landing_page'\n} }];"
+      },
+      "id": "validate-signup",
+      "name": "Validate Signup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 580]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equal" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-valid",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 580]
+    },
+
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Subscribers", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "firstName": "={{ $json.firstName }}",
+            "lastName": "={{ $json.lastName }}",
+            "fullName": "={{ $json.fullName }}",
+            "company": "={{ $json.company }}",
+            "role": "={{ $json.role }}",
+            "roleOther": "={{ $json.roleOther }}",
+            "phone": "={{ $json.phone }}",
+            "subscribedAt": "={{ $json.subscribedAt }}",
+            "active": "=TRUE",
+            "send_count": "=0",
+            "last_sent_at": "",
+            "source": "=landing_page"
+          }
+        },
+        "matchingColumns": ["email"],
+        "options": {}
+      },
+      "id": "save-subscriber",
+      "name": "Save to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [900, 520],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Uses appendOrUpdate with email as match key — so re-subscribing reactivates the row rather than creating a duplicate. All fields written by header name so you can add columns to the sheet freely."
+    },
+
+    {
+      "parameters": {
+        "sendTo": "={{ $('Validate Signup').item.json.email }}",
+        "subject": "Welcome to the Daily Mortgage Digest",
+        "emailType": "html",
+        "message": "={{ '<!DOCTYPE html><html><body style=\"margin:0;padding:0;background:#080e17;font-family:-apple-system,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 20px;\"><table width=\"540\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:540px;\"><tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-bottom:3px solid #c9a84c;border-radius:8px 8px 0 0;padding:28px;\"><p style=\"margin:0 0 4px;font-size:10px;font-family:Courier New,monospace;color:#c9a84c;letter-spacing:0.14em;\">DAILY BRIEFING</p><h1 style=\"margin:0;font-size:22px;font-weight:800;color:white;\">Mortgage &amp; Real Estate Digest</h1></td></tr><tr><td style=\"background:#0d1520;border:1px solid #1e293b;border-top:none;padding:28px;\"><p style=\"margin:0 0 16px;font-size:15px;color:#e2e8f0;\">Hi ' + $('Validate Signup').item.json.firstName + ', you&#39;re in.</p><p style=\"margin:0 0 16px;font-size:13px;color:#94a3b8;line-height:1.7;\">Your first Daily Mortgage &amp; Real Estate Digest arrives tomorrow morning at 6 AM Eastern. Every weekday you&#39;ll get:</p><ul style=\"margin:0 0 20px;padding-left:18px;\"><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Current mortgage rates &amp; MBS pricing</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Top 6–10 stories from 12 industry sources</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Fed &amp; regulatory updates</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">First &amp; second order effects analysis</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">What to watch for the day</li></ul></td></tr><tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-top:none;border-radius:0 0 8px 8px;padding:16px 28px;text-align:center;\"><p style=\"margin:0 0 4px;font-size:11px;color:#e2e8f0;font-weight:600;\">Mortgage Digest — JWH Finance</p><p style=\"margin:0;font-size:10px;font-family:Courier New,monospace;color:#475569;\">mortgage-digest@jwhfinance.com</p></td></tr></table></td></tr></table></body></html>' }}",
+        "options": {
+          "senderName": "Mortgage Digest | JWH Finance",
+          "replyTo": "mortgage-digest@jwhfinance.com",
+          "appendAttribution": false
+        }
+      },
+      "id": "welcome-email",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1120, 520],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.valid ? JSON.stringify({ success: true, message: 'Subscribed!' }) : JSON.stringify({ success: false, error: $json.error }) }}",
+        "options": { "responseCode": "={{ $json.valid ? 200 : 400 }}" }
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 680]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "digest-unsubscribe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "unsubscribe-webhook",
+      "name": "Unsubscribe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 820],
+      "webhookId": "digest-unsubscribe",
+      "notes": "GET request so clicking the email link works directly in browser. URL: https://YOUR-N8N/webhook/digest-unsubscribe?email=user@example.com"
+    },
+
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Subscribers", "mode": "name" },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "email",
+              "lookupValue": "={{ $json.query.email || $json.body?.email }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "values": [
+            { "fieldId": "active", "fieldValue": "=FALSE" },
+            { "fieldId": "unsubscribedAt", "fieldValue": "={{ $now.toISO() }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "unsubscribe-sheet",
+      "name": "Mark Unsubscribed in Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [460, 820],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "respondWith": "html",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Unsubscribed</title></head><body style='margin:0;padding:40px 20px;background:#080e17;font-family:-apple-system,sans-serif;text-align:center;'><div style='max-width:400px;margin:0 auto;'><span style='font-size:40px;'>👋</span><h2 style='color:white;margin:16px 0 8px;'>You've been unsubscribed.</h2><p style='color:#64748b;font-size:14px;line-height:1.6;'>You won't receive any more emails from the Mortgage Digest. If this was a mistake, visit the signup page to re-subscribe.</p><p style='margin-top:32px;font-size:11px;color:#334155;font-family:Courier New,monospace;'>Mortgage Digest — JWH Finance</p></div></body></html>",
+        "options": { "responseCode": 200 }
+      },
+      "id": "unsubscribe-response",
+      "name": "Unsubscribe Confirmation Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 820]
+    }
+  ],
+
+  "connections": {
+    "6 AM Daily (Mon–Fri)": {
+      "main": [[{ "node": "Fetch Active Subscribers", "type": "main", "index": 0 }]]
+    },
+    "Fetch Active Subscribers": {
+      "main": [[{ "node": "Generate Digest via Gemini", "type": "main", "index": 0 }]]
+    },
+    "Generate Digest via Gemini": {
+      "main": [[{ "node": "Parse & Validate Digest", "type": "main", "index": 0 }]]
+    },
+    "Parse & Validate Digest": {
+      "main": [[{ "node": "Build HTML Email", "type": "main", "index": 0 }]]
+    },
+    "Build HTML Email": {
+      "main": [[{ "node": "Split Subscribers", "type": "main", "index": 0 }]]
+    },
+    "Split Subscribers": {
+      "main": [[{ "node": "Send via Gmail", "type": "main", "index": 0 }]]
+    },
+    "Send via Gmail": {
+      "main": [[{ "node": "Log Send to Sheet", "type": "main", "index": 0 }]]
+    },
+    "Log Send to Sheet": {
+      "main": [[{ "node": "Split Subscribers", "type": "main", "index": 0 }]]
+    },
+    "Signup Webhook": {
+      "main": [[{ "node": "Validate Signup", "type": "main", "index": 0 }]]
+    },
+    "Validate Signup": {
+      "main": [[{ "node": "Valid?", "type": "main", "index": 0 }]]
+    },
+    "Valid?": {
+      "main": [
+        [{ "node": "Save to Google Sheet", "type": "main", "index": 0 }],
+        [{ "node": "Webhook Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save to Google Sheet": {
+      "main": [[{ "node": "Send Welcome Email", "type": "main", "index": 0 }]]
+    },
+    "Send Welcome Email": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    },
+    "Unsubscribe Webhook": {
+      "main": [[{ "node": "Mark Unsubscribed in Sheet", "type": "main", "index": 0 }]]
+    },
+    "Mark Unsubscribed in Sheet": {
+      "main": [[{ "node": "Unsubscribe Confirmation Page", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+
+  "staticData": null,
+  "tags": ["mortgage", "digest", "automation", "gemini", "google-sheets"],
+  "triggerCount": 3,
+  "updatedAt": "2026-06-17T00:00:00.000Z",
+  "versionId": "2"
+}
