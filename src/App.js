@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const WEBHOOK_URL = "https://jwhfinancial.app.n8n.cloud/webhook-test/digest-signup";
+const WEBHOOK_URL = "https://jwhfinancial.app.n8n.cloud/webhook/digest-signup";
 
 const ROLES = [
   { value: "", label: "Select your role…" },
