@@ -37,6 +37,7 @@ FINANCIAL MEDIA (SPECIFIC SECTIONS):
 - Wall Street Journal: "Housing" tag and Nick Timiraos byline specifically (wsj.com/real-estate/housing and wsj.com/economy/housing) — NOT general WSJ
 
 WRITING RULES — strictly follow:
+- NO DIRECT QUOTES: Never copy or reproduce any sentence, phrase, or passage verbatim from a source article. Every word in summaries, keyPoints, and effects must be original writing based on the facts reported. Paraphrase and synthesize — do not transcribe.
 - summary: MAX 2 sentences. Lead with the number or decision, not context.
 - keyPoints: MAX 3 bullets, each MAX 10 words. Facts only.
 - effects firstOrder/secondOrder: MAX 2 items each, MAX 12 words per item.

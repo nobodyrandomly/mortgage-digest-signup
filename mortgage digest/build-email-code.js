@@ -216,7 +216,8 @@ const html = `<!DOCTYPE html>
   <tr><td style="background:${BRAND.navy};padding:18px 24px;border-radius:0;text-align:center;margin-top:8px;">
     <p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">JWH Financial · Mortgage Digest</p>
     <p style="margin:0 0 10px;font-size:10px;color:${BRAND.textMuted};font-family:'Courier New',Courier,monospace;">mortgage-digest@jwhfinance.com</p>
-    <p style="margin:0 0 8px;font-size:9px;color:#374151;line-height:1.7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">HousingWire · MND · MBS Live · NMP · Fed · CFPB<br>Freddie Mac · Fannie Mae · MBA · NAR · Bloomberg · WSJ</p>
+    <p style="margin:0 0 8px;font-size:9px;color:#374151;line-height:1.7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae<br>MBA · NAR · Inman · Zillow · Redfin · NAHB · CoStar · BLS · Census · Conference Board · Bloomberg RE · WSJ Housing</p>
+    <p style="margin:0 0 10px;font-size:9px;color:#4B5563;font-style:italic;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Summaries are independently generated. All rights belong to original publishers.</p>
     <a href="${UNSUBSCRIBE_WEBHOOK}?email={{subscriber_email}}" style="font-size:10px;color:${BRAND.textMuted};text-decoration:underline;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Unsubscribe</a>
   </td></tr>
 
