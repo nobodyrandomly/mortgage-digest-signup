@@ -287,7 +287,7 @@ export default function DigestSignup() {
               <p style={{ margin: "0 0 2px", fontSize: "12px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage Digest</p>
               <p style={{ margin: "0 0 8px", fontSize: "10px", color: B.light, fontFamily: "'Courier New', monospace" }}>mortgage-digest@jwhfinance.com</p>
               <p style={{ margin: "0 0 6px", fontSize: "9px", color: "#374151", lineHeight: "1.6" }}>HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA<br />NAR · Inman · Zillow · Redfin · NAHB · CoStar · BLS · Census · Conference Board · Bloomberg RE · WSJ Housing</p>
-              <a href="#" style={{ fontSize: "10px", color: B.light, textDecoration: "underline" }}>Unsubscribe</a>
+              <button onClick={() => { }} style={{ fontSize: "10px", color: B.light, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unsubscribe</button>
             </div>
             <div style={{ height: "3px", background: B.blue }} />
           </div>
