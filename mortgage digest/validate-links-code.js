@@ -67,7 +67,7 @@ Search for this article and return the full direct URL to it. If you cannot find
 };
 
 // Get API key from credential
-const apiKey = $credentials?.googleGeminiApi?.apiKey || '';
+const apiKey = '{{ $credentials.googleGeminiApi.apiKey }}';
 
 const validatedStories = [];
 let stats = { ok: 0, fixed: 0, fallback: 0 };

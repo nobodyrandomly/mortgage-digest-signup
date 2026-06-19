@@ -148,7 +148,7 @@ const watchItems = (digest.watchList || []).map((item, i) =>
   </td></tr>`
 ).join('');
 
-const UNSUBSCRIBE_WEBHOOK = 'https://YOUR-N8N-INSTANCE/webhook/digest-unsubscribe';
+const UNSUBSCRIBE_WEBHOOK = 'https://jwhfinancial.app.n8n.cloud/webhook/digest-unsubscribe';
 
 const html = `<!DOCTYPE html>
 <html lang="en">

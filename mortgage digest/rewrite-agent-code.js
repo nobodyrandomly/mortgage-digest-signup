@@ -47,7 +47,7 @@ Return ONLY valid JSON for this single story with all original fields preserved 
   try {
     const response = await $helpers.request({
       method: 'POST',
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${$credentials.googleGeminiApi?.apiKey || ''}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={{ $credentials.googleGeminiApi.apiKey }}`,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

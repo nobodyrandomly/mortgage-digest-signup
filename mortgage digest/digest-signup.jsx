@@ -91,6 +91,22 @@ function StoryCard({ story }) {
 
 export default function DigestSignup() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
+
+  // Detect local delivery time — digest sends at 10:00 UTC (6 AM Eastern)
+  const getLocalDeliveryTime = () => {
+    try {
+      const sendTimeUTC = new Date();
+      sendTimeUTC.setUTCHours(10, 0, 0, 0); // 10:00 UTC = 6 AM Eastern
+      return sendTimeUTC.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+    } catch {
+      return "6 AM ET";
+    }
+  };
+  const deliveryTime = getLocalDeliveryTime();
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
 
@@ -149,14 +165,14 @@ export default function DigestSignup() {
           <div style={{ textAlign: "center", marginBottom: "36px" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "5px 14px", marginBottom: "12px" }}>
               <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: B.green }} />
-              <span style={{ fontSize: "12px", fontWeight: "600", color: B.muted }}>Delivered every weekday at 6 AM</span>
+              <span style={{ fontSize: "12px", fontWeight: "600", color: B.muted }}>{`Delivered every weekday at ${deliveryTime}`}</span>
             </div>
             <h2 style={{ margin: "0 0 10px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: "800", color: B.navy, letterSpacing: "-0.03em", lineHeight: "1.1" }}>
               The mortgage market<br />
               <span style={{ color: B.blue }}>summarized before breakfast.</span>
             </h2>
             <p style={{ margin: "0 auto 24px", maxWidth: "460px", fontSize: "16px", color: B.muted, lineHeight: "1.7" }}>
-              Rates, MBS, Fed moves, housing data, and effects analysis — distilled from 20 industry sources into one sharp email.
+              Rates, MBS, Fed moves, housing data, and effects analysis — distilled from 20 industry sources into one sharp email, in your inbox by {deliveryTime}.
             </p>
           </div>
 
@@ -165,7 +181,7 @@ export default function DigestSignup() {
             <div style={{ maxWidth: "560px", margin: "0 auto", textAlign: "center", padding: "32px 0" }}>
               <div style={{ width: "56px", height: "56px", background: "#F0FDF4", border: `2px solid ${B.green}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "24px" }}>✅</div>
               <h3 style={{ margin: "0 0 8px", color: B.navy, fontSize: "20px", fontWeight: "700" }}>You're on the list.</h3>
-              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>Check your inbox for a confirmation.<br />First digest arrives tomorrow at 6 AM.</p>
+              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>Check your inbox for a confirmation.<br />{`First digest arrives tomorrow at ${deliveryTime}.`}</p>
             </div>
           ) : (
             <div style={{ maxWidth: "560px", margin: "0 auto" }}>

@@ -27,7 +27,7 @@
         "operation": "readAllMatchingRows",
         "documentId": {
           "__rl": true,
-          "value": "YOUR_GOOGLE_SHEET_ID",
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
           "mode": "id"
         },
         "sheetName": {
@@ -137,7 +137,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// LINK VALIDATOR v2\n// For each story:\n// 1. HEAD request on the original URL \u2014 if resolves, use it\n// 2. If broken/null \u2014 call Gemini with Google Search to find the real URL\n// 3. HEAD request on Gemini's result to confirm it works\n// 4. If confirmed \u2014 use it\n// 5. Last resort \u2014 Google search URL for the headline\n\nconst digest = $input.first().json;\n\nconst GOOGLE_SEARCH = (q) =>\n  'https://www.google.com/search?q=' + encodeURIComponent(q);\n\nconst GEMINI_ENDPOINT =\n  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent';\n\n// Check if a URL resolves with a 200-399 response\nconst checkUrl = async (url) => {\n  if (!url || url === 'null' || url.includes('google.com/search')) return false;\n  try {\n    const res = await $helpers.request({\n      method: 'HEAD',\n      url,\n      timeout: 7000,\n      followRedirect: true,\n      simple: false,\n    });\n    return res.statusCode >= 200 && res.statusCode < 400;\n  } catch {\n    return false;\n  }\n};\n\n// Ask Gemini to find the correct direct URL for a headline + source\nconst findUrlWithGemini = async (headline, source, apiKey) => {\n  try {\n    const prompt = `Find the exact, direct URL for this specific article. Return ONLY the URL \u2014 no explanation, no markdown, no other text.\n\nArticle headline: \"${headline}\"\nPublished by: ${source}\n\nSearch for this article and return the full direct URL to it. If you cannot find a confirmed working direct URL, return the word null.`;\n\n    const res = await $helpers.request({\n      method: 'POST',\n      url: `${GEMINI_ENDPOINT}?key=${apiKey}`,\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        contents: [{ role: 'user', parts: [{ text: prompt }] }],\n        tools: [{ google_search: {} }],\n        generationConfig: { temperature: 0, maxOutputTokens: 256 },\n      }),\n      timeout: 30000,\n      simple: false,\n    });\n\n    const data = JSON.parse(res.body);\n    const text = (data.candidates?.[0]?.content?.parts || [])\n      .filter(p => p.text).map(p => p.text).join('').trim();\n\n    // Extract URL from response\n    const urlMatch = text.match(/https?:\\/\\/[^\\s\"'<>]+/);\n    return urlMatch ? urlMatch[0].replace(/[.,;)]$/, '') : null;\n  } catch {\n    return null;\n  }\n};\n\n// Get API key from credential\nconst apiKey = $credentials?.googleGeminiApi?.apiKey || '';\n\nconst validatedStories = [];\nlet stats = { ok: 0, fixed: 0, fallback: 0 };\n\nfor (const story of digest.stories) {\n  // Step 1: check original URL\n  const originalOk = await checkUrl(story.sourceUrl);\n\n  if (originalOk) {\n    stats.ok++;\n    validatedStories.push(story);\n    continue;\n  }\n\n  // Step 2: ask Gemini to find the real URL\n  console.log(`[LINK VALIDATOR] Broken URL for \"${story.headline}\" \u2014 searching for correct link`);\n  const foundUrl = await findUrlWithGemini(story.headline, story.source, apiKey);\n\n  if (foundUrl) {\n    // Step 3: confirm the found URL actually works\n    const foundOk = await checkUrl(foundUrl);\n\n    if (foundOk) {\n      stats.fixed++;\n      console.log(`[LINK VALIDATOR] Fixed: ${story.source} \u2014 \"${story.headline}\" \u2192 ${foundUrl}`);\n      validatedStories.push({ ...story, sourceUrl: foundUrl, _urlFixed: true });\n      continue;\n    }\n  }\n\n  // Step 4: last resort \u2014 Google search\n  stats.fallback++;\n  console.warn(`[LINK VALIDATOR] Fallback to Google search: \"${story.headline}\"`);\n  validatedStories.push({\n    ...story,\n    sourceUrl: GOOGLE_SEARCH(`${story.headline} ${story.source}`),\n    _urlFallback: true,\n  });\n}\n\ndigest.stories = validatedStories;\ndigest._linkValidation = {\n  ok: stats.ok,\n  fixed: stats.fixed,\n  fallback: stats.fallback,\n  total: digest.stories.length,\n};\n\nconsole.log(`[LINK VALIDATOR] ${stats.ok} OK, ${stats.fixed} fixed via Gemini search, ${stats.fallback} fell back to Google search`);\n\nreturn [{ json: digest }];\n"
+        "jsCode": "// LINK VALIDATOR v2\n// For each story:\n// 1. HEAD request on the original URL \u2014 if resolves, use it\n// 2. If broken/null \u2014 call Gemini with Google Search to find the real URL\n// 3. HEAD request on Gemini's result to confirm it works\n// 4. If confirmed \u2014 use it\n// 5. Last resort \u2014 Google search URL for the headline\n\nconst digest = $input.first().json;\n\nconst GOOGLE_SEARCH = (q) =>\n  'https://www.google.com/search?q=' + encodeURIComponent(q);\n\nconst GEMINI_ENDPOINT =\n  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent';\n\n// Check if a URL resolves with a 200-399 response\nconst checkUrl = async (url) => {\n  if (!url || url === 'null' || url.includes('google.com/search')) return false;\n  try {\n    const res = await $helpers.request({\n      method: 'HEAD',\n      url,\n      timeout: 7000,\n      followRedirect: true,\n      simple: false,\n    });\n    return res.statusCode >= 200 && res.statusCode < 400;\n  } catch {\n    return false;\n  }\n};\n\n// Ask Gemini to find the correct direct URL for a headline + source\nconst findUrlWithGemini = async (headline, source, apiKey) => {\n  try {\n    const prompt = `Find the exact, direct URL for this specific article. Return ONLY the URL \u2014 no explanation, no markdown, no other text.\n\nArticle headline: \"${headline}\"\nPublished by: ${source}\n\nSearch for this article and return the full direct URL to it. If you cannot find a confirmed working direct URL, return the word null.`;\n\n    const res = await $helpers.request({\n      method: 'POST',\n      url: `${GEMINI_ENDPOINT}?key=${apiKey}`,\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        contents: [{ role: 'user', parts: [{ text: prompt }] }],\n        tools: [{ google_search: {} }],\n        generationConfig: { temperature: 0, maxOutputTokens: 256 },\n      }),\n      timeout: 30000,\n      simple: false,\n    });\n\n    const data = JSON.parse(res.body);\n    const text = (data.candidates?.[0]?.content?.parts || [])\n      .filter(p => p.text).map(p => p.text).join('').trim();\n\n    // Extract URL from response\n    const urlMatch = text.match(/https?:\\/\\/[^\\s\"'<>]+/);\n    return urlMatch ? urlMatch[0].replace(/[.,;)]$/, '') : null;\n  } catch {\n    return null;\n  }\n};\n\n// Get API key from credential\nconst apiKey = '{{ $credentials.googleGeminiApi.apiKey }}';\n\nconst validatedStories = [];\nlet stats = { ok: 0, fixed: 0, fallback: 0 };\n\nfor (const story of digest.stories) {\n  // Step 1: check original URL\n  const originalOk = await checkUrl(story.sourceUrl);\n\n  if (originalOk) {\n    stats.ok++;\n    validatedStories.push(story);\n    continue;\n  }\n\n  // Step 2: ask Gemini to find the real URL\n  console.log(`[LINK VALIDATOR] Broken URL for \"${story.headline}\" \u2014 searching for correct link`);\n  const foundUrl = await findUrlWithGemini(story.headline, story.source, apiKey);\n\n  if (foundUrl) {\n    // Step 3: confirm the found URL actually works\n    const foundOk = await checkUrl(foundUrl);\n\n    if (foundOk) {\n      stats.fixed++;\n      console.log(`[LINK VALIDATOR] Fixed: ${story.source} \u2014 \"${story.headline}\" \u2192 ${foundUrl}`);\n      validatedStories.push({ ...story, sourceUrl: foundUrl, _urlFixed: true });\n      continue;\n    }\n  }\n\n  // Step 4: last resort \u2014 Google search\n  stats.fallback++;\n  console.warn(`[LINK VALIDATOR] Fallback to Google search: \"${story.headline}\"`);\n  validatedStories.push({\n    ...story,\n    sourceUrl: GOOGLE_SEARCH(`${story.headline} ${story.source}`),\n    _urlFallback: true,\n  });\n}\n\ndigest.stories = validatedStories;\ndigest._linkValidation = {\n  ok: stats.ok,\n  fixed: stats.fixed,\n  fallback: stats.fallback,\n  total: digest.stories.length,\n};\n\nconsole.log(`[LINK VALIDATOR] ${stats.ok} OK, ${stats.fixed} fixed via Gemini search, ${stats.fallback} fell back to Google search`);\n\nreturn [{ json: digest }];\n"
       },
       "id": "validate-links",
       "name": "Validate & Fix Story Links",
@@ -165,7 +165,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// REWRITE AGENT NODE\n// Receives flagged stories from the Plagiarism Check node.\n// Rewrites only the flagged fields (summary, keyPoints, effects, realtorSection)\n// for each flagged story using Gemini \u2014 headlines, sources, and URLs are preserved.\n// Merges rewritten stories back into the digest and passes everything to Build HTML Email.\n// This is Option B: always send after rewrite regardless of second-check result.\n\nconst digest = $input.first().json;\nconst flaggedStories = digest._flaggedStories || [];\n\n// If nothing was flagged, pass straight through\nif (flaggedStories.length === 0) {\n  console.log('[REWRITE AGENT] No flagged stories \u2014 passing through');\n  const { _flaggedStories, _plagiarismSummary, ...cleanDigest } = digest;\n  return [{ json: cleanDigest }];\n}\n\nconsole.log(`[REWRITE AGENT] Rewriting ${flaggedStories.length} flagged story/stories`);\n\nconst rewrittenStories = [];\n\nfor (const story of flaggedStories) {\n  const { _plagiarismMatches, _matchCount, ...storyData } = story;\n\n  const prompt = `You are a mortgage industry analyst. The following story summary contains text that too closely matches the source article. Rewrite ONLY the fields listed below using entirely original language. Do not copy any phrase from the source. Do not quote the article. Paraphrase all facts from scratch using different words and sentence structures.\n\nPRESERVE EXACTLY (do not change):\n- headline: \"${storyData.headline}\"\n- source: \"${storyData.source}\"\n- sourceUrl: \"${storyData.sourceUrl}\"\n- importance: \"${storyData.importance}\"\n- category: \"${storyData.category}\"\n\nREWRITE THESE FIELDS using completely original language:\n- summary (MAX 2 sentences, lead with key fact or number)\n- keyPoints (MAX 3 bullets, MAX 10 words each, facts only)\n- effects.firstOrder (MAX 2 items, MAX 12 words each) \u2014 only if hasEffects is true\n- effects.secondOrder (MAX 2 items, MAX 12 words each) \u2014 only if hasEffects is true\n- realtorSection.summary (MAX 2 sentences) \u2014 only if hasRealtorAngle is true\n- realtorSection.actionables (MAX 2 items, MAX 12 words each) \u2014 only if hasRealtorAngle is true\n\nCurrent content to rewrite:\n${JSON.stringify(storyData, null, 2)}\n\nReturn ONLY valid JSON for this single story with all original fields preserved and the above fields rewritten. No markdown, no code fences, no commentary.`;\n\n  try {\n    const response = await $helpers.request({\n      method: 'POST',\n      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${$credentials.googleGeminiApi?.apiKey || ''}`,\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        contents: [{ role: 'user', parts: [{ text: prompt }] }],\n        generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },\n      }),\n      timeout: 60000,\n      simple: false,\n    });\n\n    const data = JSON.parse(response.body);\n    const rawText = (data.candidates?.[0]?.content?.parts || [])\n      .filter(p => p.text).map(p => p.text).join('').trim()\n      .replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '');\n\n    const rewritten = JSON.parse(rawText);\n\n    // Enforce: headline, source, sourceUrl must not change\n    rewritten.headline = storyData.headline;\n    rewritten.source = storyData.source;\n    rewritten.sourceUrl = storyData.sourceUrl;\n    rewritten.importance = storyData.importance;\n    rewritten.category = storyData.category;\n    rewritten._rewritten = true;\n\n    rewrittenStories.push(rewritten);\n    console.log(`[REWRITE AGENT] Rewrote: \"${storyData.headline}\"`);\n  } catch (err) {\n    // If rewrite fails, include original story with a flag rather than drop it\n    console.error(`[REWRITE AGENT] Failed to rewrite \"${storyData.headline}\": ${err.message}`);\n    rewrittenStories.push({ ...storyData, _rewriteFailed: true });\n  }\n}\n\n// Merge: clean stories + rewritten stories, restore original sort order\nconst allStories = [\n  ...digest.stories,       // already-clean stories\n  ...rewrittenStories,     // rewritten flagged stories\n].sort((a, b) => {\n  if (a.importance === 'high' && b.importance !== 'high') return -1;\n  if (b.importance === 'high' && a.importance !== 'high') return 1;\n  return 0;\n});\n\n// Strip internal fields before passing to email builder\nconst { _flaggedStories, _plagiarismSummary, ...finalDigest } = digest;\nfinalDigest.stories = allStories;\nfinalDigest._rewriteLog = {\n  rewritten: rewrittenStories.length,\n  rewriteFailed: rewrittenStories.filter(s => s._rewriteFailed).length,\n};\n\nconsole.log(`[REWRITE AGENT] Complete \u2014 ${rewrittenStories.length} rewritten, merging into digest`);\n\nreturn [{ json: finalDigest }];\n"
+        "jsCode": "// REWRITE AGENT NODE\n// Receives flagged stories from the Plagiarism Check node.\n// Rewrites only the flagged fields (summary, keyPoints, effects, realtorSection)\n// for each flagged story using Gemini \u2014 headlines, sources, and URLs are preserved.\n// Merges rewritten stories back into the digest and passes everything to Build HTML Email.\n// This is Option B: always send after rewrite regardless of second-check result.\n\nconst digest = $input.first().json;\nconst flaggedStories = digest._flaggedStories || [];\n\n// If nothing was flagged, pass straight through\nif (flaggedStories.length === 0) {\n  console.log('[REWRITE AGENT] No flagged stories \u2014 passing through');\n  const { _flaggedStories, _plagiarismSummary, ...cleanDigest } = digest;\n  return [{ json: cleanDigest }];\n}\n\nconsole.log(`[REWRITE AGENT] Rewriting ${flaggedStories.length} flagged story/stories`);\n\nconst rewrittenStories = [];\n\nfor (const story of flaggedStories) {\n  const { _plagiarismMatches, _matchCount, ...storyData } = story;\n\n  const prompt = `You are a mortgage industry analyst. The following story summary contains text that too closely matches the source article. Rewrite ONLY the fields listed below using entirely original language. Do not copy any phrase from the source. Do not quote the article. Paraphrase all facts from scratch using different words and sentence structures.\n\nPRESERVE EXACTLY (do not change):\n- headline: \"${storyData.headline}\"\n- source: \"${storyData.source}\"\n- sourceUrl: \"${storyData.sourceUrl}\"\n- importance: \"${storyData.importance}\"\n- category: \"${storyData.category}\"\n\nREWRITE THESE FIELDS using completely original language:\n- summary (MAX 2 sentences, lead with key fact or number)\n- keyPoints (MAX 3 bullets, MAX 10 words each, facts only)\n- effects.firstOrder (MAX 2 items, MAX 12 words each) \u2014 only if hasEffects is true\n- effects.secondOrder (MAX 2 items, MAX 12 words each) \u2014 only if hasEffects is true\n- realtorSection.summary (MAX 2 sentences) \u2014 only if hasRealtorAngle is true\n- realtorSection.actionables (MAX 2 items, MAX 12 words each) \u2014 only if hasRealtorAngle is true\n\nCurrent content to rewrite:\n${JSON.stringify(storyData, null, 2)}\n\nReturn ONLY valid JSON for this single story with all original fields preserved and the above fields rewritten. No markdown, no code fences, no commentary.`;\n\n  try {\n    const response = await $helpers.request({\n      method: 'POST',\n      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={{ $credentials.googleGeminiApi.apiKey }}`,\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        contents: [{ role: 'user', parts: [{ text: prompt }] }],\n        generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },\n      }),\n      timeout: 60000,\n      simple: false,\n    });\n\n    const data = JSON.parse(response.body);\n    const rawText = (data.candidates?.[0]?.content?.parts || [])\n      .filter(p => p.text).map(p => p.text).join('').trim()\n      .replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/\\s*```$/i, '');\n\n    const rewritten = JSON.parse(rawText);\n\n    // Enforce: headline, source, sourceUrl must not change\n    rewritten.headline = storyData.headline;\n    rewritten.source = storyData.source;\n    rewritten.sourceUrl = storyData.sourceUrl;\n    rewritten.importance = storyData.importance;\n    rewritten.category = storyData.category;\n    rewritten._rewritten = true;\n\n    rewrittenStories.push(rewritten);\n    console.log(`[REWRITE AGENT] Rewrote: \"${storyData.headline}\"`);\n  } catch (err) {\n    // If rewrite fails, include original story with a flag rather than drop it\n    console.error(`[REWRITE AGENT] Failed to rewrite \"${storyData.headline}\": ${err.message}`);\n    rewrittenStories.push({ ...storyData, _rewriteFailed: true });\n  }\n}\n\n// Merge: clean stories + rewritten stories, restore original sort order\nconst allStories = [\n  ...digest.stories,       // already-clean stories\n  ...rewrittenStories,     // rewritten flagged stories\n].sort((a, b) => {\n  if (a.importance === 'high' && b.importance !== 'high') return -1;\n  if (b.importance === 'high' && a.importance !== 'high') return 1;\n  return 0;\n});\n\n// Strip internal fields before passing to email builder\nconst { _flaggedStories, _plagiarismSummary, ...finalDigest } = digest;\nfinalDigest.stories = allStories;\nfinalDigest._rewriteLog = {\n  rewritten: rewrittenStories.length,\n  rewriteFailed: rewrittenStories.filter(s => s._rewriteFailed).length,\n};\n\nconsole.log(`[REWRITE AGENT] Complete \u2014 ${rewrittenStories.length} rewritten, merging into digest`);\n\nreturn [{ json: finalDigest }];\n"
       },
       "id": "rewrite-agent",
       "name": "Rewrite Agent",
@@ -179,7 +179,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const digest = $input.first().json;\n\n// JWH Financial brand palette\nconst BRAND = {\n  navy: '#0D1321',\n  blue: '#3B6FE8',\n  green: '#22C55E',\n  red: '#DC2626',\n  pageBg: '#EEF0F5',\n  cardBg: '#FFFFFF',\n  border: '#E2E5EC',\n  textPrimary: '#0D1321',\n  textSecondary: '#4B5563',\n  textMuted: '#9CA3AF',\n  effectsBg: '#EEF2FF',\n  effectsBorder: '#C7D2FE',\n};\n\n// Source badge colors \u2014 all in brand navy or blue family\nconst SOURCE_COLORS = {\n  'HousingWire': '#1E3A8A',\n  'Mortgage News Daily': '#1E40AF',\n  'MBS Live': '#C2410C',\n  'National Mortgage Professional': '#5B21B6',\n  'Federal Reserve': '#065F46',\n  'CFPB': '#166534',\n  'Freddie Mac': '#1D4ED8',\n  'Fannie Mae': '#1E3A8A',\n  'Mortgage Bankers Association': '#9F1239',\n  'National Association of Realtors': '#1D4ED8',\n  'Bloomberg': '#C2410C',\n  'Wall Street Journal': '#0D1321',\n};\n\nconst CATEGORY_EMOJI = {\n  rates: '\ud83d\udcc8', mbs: '\ud83d\udcca', housing: '\ud83c\udfe0',\n  fed: '\ud83c\udfe6', regulatory: '\ud83d\udccb', gse: '\ud83c\udfdb\ufe0f',\n  lender: '\ud83c\udfe2', economy: '\ud83d\udcbc',\n};\n\nconst getSourceColor = (source) => {\n  for (const [key, color] of Object.entries(SOURCE_COLORS)) {\n    if (source.toLowerCase().includes(key.toLowerCase())) return color;\n  }\n  return BRAND.navy;\n};\n\n// Rate table\nconst rateRows = (digest.marketSnapshot?.rates || []).map(r => {\n  const isUp = r.change && r.change.startsWith('+');\n  const isDown = r.change && r.change.startsWith('-');\n  const changeColor = isUp ? BRAND.red : isDown ? BRAND.green : BRAND.textMuted;\n  const changeBg = isUp ? '#FEF2F2' : isDown ? '#F0FDF4' : '#F9FAFB';\n  return `<tr>\n    <td style=\"padding:10px 0;border-bottom:1px solid ${BRAND.border};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:${BRAND.textSecondary};letter-spacing:0.03em;\">${r.label}</td>\n    <td style=\"padding:10px 0;border-bottom:1px solid ${BRAND.border};font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:700;color:${BRAND.textPrimary};text-align:right;\">${r.value}</td>\n    <td style=\"padding:10px 0 10px 8px;border-bottom:1px solid ${BRAND.border};text-align:right;\">\n      <span style=\"display:inline-block;padding:2px 8px;background:${changeBg};color:${changeColor};font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;border-radius:20px;\">${r.change || '\u2014'}</span>\n    </td>\n  </tr>`;\n}).join('');\n\n// Story cards\nconst storyCards = digest.stories.map((story) => {\n  const borderColor = getSourceColor(story.source);\n  const isTop = story.importance === 'high';\n  const emoji = CATEGORY_EMOJI[story.category] || '';\n\n  const keyPointsHtml = story.keyPoints?.length\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:10px;\">\n        ${story.keyPoints.map(p => `<tr><td style=\"padding:3px 0;vertical-align:top;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\n          <span style=\"color:${BRAND.blue};font-weight:700;margin-right:6px;font-size:13px;\">\u00b7</span><span style=\"font-size:13px;color:${BRAND.textSecondary};line-height:1.5;\">${p}</span>\n        </td></tr>`).join('')}\n      </table>`\n    : '';\n\n  const effects = story.effects;\n  const effectsHtml = effects?.hasEffects\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:12px;border:1px solid ${BRAND.effectsBorder};border-radius:8px;overflow:hidden;\">\n        <tr><td colspan=\"2\" style=\"background:${BRAND.effectsBg};padding:7px 12px 5px;\">\n          <span style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.1em;text-transform:uppercase;\">Market Implications</span>\n        </td></tr>\n        <tr>\n          <td width=\"50%\" valign=\"top\" style=\"background:${BRAND.effectsBg};padding:4px 12px 10px;border-right:1px solid ${BRAND.effectsBorder};\">\n            <p style=\"margin:0 0 5px;font-size:9px;font-weight:700;color:${BRAND.navy};letter-spacing:0.08em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u26a1 Immediate</p>\n            ${(effects.firstOrder || []).map(e => `<p style=\"margin:0 0 4px;font-size:11px;color:${BRAND.textSecondary};line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u00b7 ${e}</p>`).join('')}\n          </td>\n          <td width=\"50%\" valign=\"top\" style=\"background:${BRAND.effectsBg};padding:4px 12px 10px;\">\n            <p style=\"margin:0 0 5px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.08em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u301c Downstream</p>\n            ${(effects.secondOrder || []).map(e => `<p style=\"margin:0 0 4px;font-size:11px;color:${BRAND.textSecondary};line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u00b7 ${e}</p>`).join('')}\n          </td>\n        </tr>\n      </table>`\n    : '';\n\n\n  // Realtor section\n  const rs = story.realtorSection;\n  const realtorHtml = rs?.hasRealtorAngle\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:12px;border:1px solid #BBF7D0;border-radius:8px;overflow:hidden;\">\n        <tr><td style=\"background:#F0FDF4;padding:7px 12px 5px;\">\n          <span style=\"font-size:9px;font-weight:700;color:#15803D;letter-spacing:0.1em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\ud83c\udfe1 For Realtors &amp; Agents</span>\n        </td></tr>\n        <tr><td style=\"background:#F0FDF4;padding:4px 12px 8px;\">\n          <p style=\"margin:0 0 6px;font-size:12px;color:#166534;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">${rs.summary}</p>\n          ${(rs.actionables || []).map(a => `<p style=\"margin:0 0 3px;font-size:11px;color:#15803D;line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u2192 ${a}</p>`).join('')}\n        </td></tr>\n      </table>`\n    : '';\n\n  const linkHtml = story.sourceUrl\n    ? `<a href=\"${story.sourceUrl}\" style=\"display:inline-block;margin-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:${BRAND.blue};text-decoration:none;\">Read full story \u2192</a>`\n    : '';\n\n  return `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-bottom:12px;border-radius:10px;overflow:hidden;border:1px solid ${BRAND.border};\">\n    <tr>\n      <td style=\"width:4px;background:${borderColor};font-size:0;\">&nbsp;</td>\n      <td style=\"background:${BRAND.cardBg};padding:14px 16px;border-radius:0 10px 10px 0;\">\n        <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n          <tr><td>\n            <span style=\"display:inline-block;padding:3px 9px;background:${borderColor};color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.07em;border-radius:20px;text-transform:uppercase;\">${story.source}</span>\n            ${isTop ? ` <span style=\"display:inline-block;padding:3px 9px;background:${BRAND.blue};color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.06em;border-radius:20px;\">\u2605 Top Story</span>` : ''}\n            ${emoji ? ` <span style=\"font-size:12px;\">${emoji}</span>` : ''}\n          </td></tr>\n          <tr><td style=\"padding-top:8px;\">\n            <p style=\"margin:0 0 5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:${BRAND.textPrimary};line-height:1.35;\">${story.headline}</p>\n            <p style=\"margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${BRAND.textSecondary};line-height:1.6;\">${story.summary}</p>\n            ${keyPointsHtml}\n            ${effectsHtml}\n            ${realtorHtml}\n            ${linkHtml}\n          </td></tr>\n        </table>\n      </td>\n    </tr>\n  </table>`;\n}).join('');\n\n// Watch list\nconst watchItems = (digest.watchList || []).map((item, i) =>\n  `<tr><td style=\"padding:8px 0;border-bottom:1px solid ${BRAND.border};vertical-align:top;\">\n    <table cellpadding=\"0\" cellspacing=\"0\"><tr>\n      <td style=\"width:28px;vertical-align:top;padding-top:1px;\">\n        <span style=\"display:inline-block;width:20px;height:20px;background:${BRAND.blue};border-radius:50%;text-align:center;line-height:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:700;color:white;\">${i+1}</span>\n      </td>\n      <td style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${BRAND.textSecondary};line-height:1.6;\">${item}</td>\n    </tr></table>\n  </td></tr>`\n).join('');\n\nconst UNSUBSCRIBE_WEBHOOK = 'https://YOUR-N8N-INSTANCE/webhook/digest-unsubscribe';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n<meta name=\"color-scheme\" content=\"light\">\n<meta name=\"supported-color-schemes\" content=\"light\">\n<title>${digest.subject || 'Daily Mortgage Digest'}</title>\n</head>\n<body style=\"margin:0;padding:0;background:${BRAND.pageBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:${BRAND.pageBg};\">\n<tr><td align=\"center\" style=\"padding:20px 12px 32px;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;\">\n\n  <!-- BLUE TOP STRIPE -->\n  <tr><td style=\"background:${BRAND.blue};height:5px;border-radius:10px 10px 0 0;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n  <!-- HEADER -->\n  <tr><td style=\"background:${BRAND.navy};padding:22px 24px 20px;border-radius:0;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n      <td>\n        <p style=\"margin:0 0 2px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.14em;text-transform:uppercase;\">JWH Financial \u00b7 Daily Briefing \u00b7 ${digest.date}</p>\n        <p style=\"margin:0;font-size:22px;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.2;\">Mortgage &amp; Real Estate Digest</p>\n      </td>\n      <td align=\"right\" valign=\"middle\" style=\"padding-left:16px;\">\n        <div style=\"width:44px;height:44px;background:${BRAND.blue};border-radius:10px;text-align:center;line-height:44px;font-size:22px;\">\ud83c\udfe0</div>\n      </td>\n    </tr></table>\n  </td></tr>\n\n  <!-- MARKET SNAPSHOT -->\n  <tr><td style=\"background:${BRAND.cardBg};padding:20px 24px;border-top:none;\">\n    <p style=\"margin:0 0 3px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">Market Snapshot</p>\n    <p style=\"margin:0 0 16px;font-size:14px;color:${BRAND.textSecondary};line-height:1.65;\">${digest.marketSnapshot?.narrative || ''}</p>\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${rateRows}</table>\n  </td></tr>\n\n  <!-- DIVIDER -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:8px 0;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n  <!-- STORIES -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:0 0 4px;\">\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n      <tr><td style=\"padding:0 0 12px;\">\n        <p style=\"margin:0;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">Today's Top Stories</p>\n      </td></tr>\n    </table>\n    ${storyCards}\n  </td></tr>\n\n  <!-- DIVIDER -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:4px 0;font-size:0;\">&nbsp;</td></tr>\n\n  <!-- WHAT TO WATCH -->\n  <tr><td style=\"background:${BRAND.cardBg};padding:20px 24px;border-radius:10px;\">\n    <p style=\"margin:0 0 12px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">What to Watch Today</p>\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${watchItems}</table>\n    ${digest.closingNote ? `<p style=\"margin:14px 0 0;font-size:13px;color:${BRAND.textMuted};font-style:italic;line-height:1.6;border-top:1px solid ${BRAND.border};padding-top:12px;\">${digest.closingNote}</p>` : ''}\n  </td></tr>\n\n  <!-- FOOTER -->\n  <tr><td style=\"background:${BRAND.navy};padding:18px 24px;border-radius:0;text-align:center;margin-top:8px;\">\n    <p style=\"margin:0 0 3px;font-size:12px;font-weight:700;color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">JWH Financial \u00b7 Mortgage Digest</p>\n    <p style=\"margin:0 0 10px;font-size:10px;color:${BRAND.textMuted};font-family:'Courier New',Courier,monospace;\">mortgage-digest@jwhfinance.com</p>\n    <p style=\"margin:0 0 8px;font-size:9px;color:#374151;line-height:1.7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">HousingWire \u00b7 MND \u00b7 MBS Live \u00b7 NMP \u00b7 Fed \u00b7 CFPB \u00b7 Freddie Mac \u00b7 Fannie Mae<br>MBA \u00b7 NAR \u00b7 Inman \u00b7 Zillow \u00b7 Redfin \u00b7 NAHB \u00b7 CoStar \u00b7 BLS \u00b7 Census \u00b7 Conference Board \u00b7 Bloomberg RE \u00b7 WSJ Housing</p>\n    <p style=\"margin:0 0 10px;font-size:9px;color:#4B5563;font-style:italic;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">Summaries are independently generated. All rights belong to original publishers.</p>\n    <a href=\"${UNSUBSCRIBE_WEBHOOK}?email={{subscriber_email}}\" style=\"font-size:10px;color:${BRAND.textMuted};text-decoration:underline;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">Unsubscribe</a>\n  </td></tr>\n\n  <!-- BLUE BOTTOM STRIPE -->\n  <tr><td style=\"background:${BRAND.blue};height:4px;border-radius:0 0 10px 10px;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n</table>\n</td></tr>\n</table>\n</body></html>`;\n\nreturn [{ json: { html, subject: digest.subject || `\ud83c\udfe0 Mortgage Digest \u2014 ${digest.date}`, digest } }];\n"
+        "jsCode": "const digest = $input.first().json;\n\n// JWH Financial brand palette\nconst BRAND = {\n  navy: '#0D1321',\n  blue: '#3B6FE8',\n  green: '#22C55E',\n  red: '#DC2626',\n  pageBg: '#EEF0F5',\n  cardBg: '#FFFFFF',\n  border: '#E2E5EC',\n  textPrimary: '#0D1321',\n  textSecondary: '#4B5563',\n  textMuted: '#9CA3AF',\n  effectsBg: '#EEF2FF',\n  effectsBorder: '#C7D2FE',\n};\n\n// Source badge colors \u2014 all in brand navy or blue family\nconst SOURCE_COLORS = {\n  'HousingWire': '#1E3A8A',\n  'Mortgage News Daily': '#1E40AF',\n  'MBS Live': '#C2410C',\n  'National Mortgage Professional': '#5B21B6',\n  'Federal Reserve': '#065F46',\n  'CFPB': '#166534',\n  'Freddie Mac': '#1D4ED8',\n  'Fannie Mae': '#1E3A8A',\n  'Mortgage Bankers Association': '#9F1239',\n  'National Association of Realtors': '#1D4ED8',\n  'Bloomberg': '#C2410C',\n  'Wall Street Journal': '#0D1321',\n};\n\nconst CATEGORY_EMOJI = {\n  rates: '\ud83d\udcc8', mbs: '\ud83d\udcca', housing: '\ud83c\udfe0',\n  fed: '\ud83c\udfe6', regulatory: '\ud83d\udccb', gse: '\ud83c\udfdb\ufe0f',\n  lender: '\ud83c\udfe2', economy: '\ud83d\udcbc',\n};\n\nconst getSourceColor = (source) => {\n  for (const [key, color] of Object.entries(SOURCE_COLORS)) {\n    if (source.toLowerCase().includes(key.toLowerCase())) return color;\n  }\n  return BRAND.navy;\n};\n\n// Rate table\nconst rateRows = (digest.marketSnapshot?.rates || []).map(r => {\n  const isUp = r.change && r.change.startsWith('+');\n  const isDown = r.change && r.change.startsWith('-');\n  const changeColor = isUp ? BRAND.red : isDown ? BRAND.green : BRAND.textMuted;\n  const changeBg = isUp ? '#FEF2F2' : isDown ? '#F0FDF4' : '#F9FAFB';\n  return `<tr>\n    <td style=\"padding:10px 0;border-bottom:1px solid ${BRAND.border};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:${BRAND.textSecondary};letter-spacing:0.03em;\">${r.label}</td>\n    <td style=\"padding:10px 0;border-bottom:1px solid ${BRAND.border};font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:700;color:${BRAND.textPrimary};text-align:right;\">${r.value}</td>\n    <td style=\"padding:10px 0 10px 8px;border-bottom:1px solid ${BRAND.border};text-align:right;\">\n      <span style=\"display:inline-block;padding:2px 8px;background:${changeBg};color:${changeColor};font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;border-radius:20px;\">${r.change || '\u2014'}</span>\n    </td>\n  </tr>`;\n}).join('');\n\n// Story cards\nconst storyCards = digest.stories.map((story) => {\n  const borderColor = getSourceColor(story.source);\n  const isTop = story.importance === 'high';\n  const emoji = CATEGORY_EMOJI[story.category] || '';\n\n  const keyPointsHtml = story.keyPoints?.length\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:10px;\">\n        ${story.keyPoints.map(p => `<tr><td style=\"padding:3px 0;vertical-align:top;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\n          <span style=\"color:${BRAND.blue};font-weight:700;margin-right:6px;font-size:13px;\">\u00b7</span><span style=\"font-size:13px;color:${BRAND.textSecondary};line-height:1.5;\">${p}</span>\n        </td></tr>`).join('')}\n      </table>`\n    : '';\n\n  const effects = story.effects;\n  const effectsHtml = effects?.hasEffects\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:12px;border:1px solid ${BRAND.effectsBorder};border-radius:8px;overflow:hidden;\">\n        <tr><td colspan=\"2\" style=\"background:${BRAND.effectsBg};padding:7px 12px 5px;\">\n          <span style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.1em;text-transform:uppercase;\">Market Implications</span>\n        </td></tr>\n        <tr>\n          <td width=\"50%\" valign=\"top\" style=\"background:${BRAND.effectsBg};padding:4px 12px 10px;border-right:1px solid ${BRAND.effectsBorder};\">\n            <p style=\"margin:0 0 5px;font-size:9px;font-weight:700;color:${BRAND.navy};letter-spacing:0.08em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u26a1 Immediate</p>\n            ${(effects.firstOrder || []).map(e => `<p style=\"margin:0 0 4px;font-size:11px;color:${BRAND.textSecondary};line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u00b7 ${e}</p>`).join('')}\n          </td>\n          <td width=\"50%\" valign=\"top\" style=\"background:${BRAND.effectsBg};padding:4px 12px 10px;\">\n            <p style=\"margin:0 0 5px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.08em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u301c Downstream</p>\n            ${(effects.secondOrder || []).map(e => `<p style=\"margin:0 0 4px;font-size:11px;color:${BRAND.textSecondary};line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u00b7 ${e}</p>`).join('')}\n          </td>\n        </tr>\n      </table>`\n    : '';\n\n\n  // Realtor section\n  const rs = story.realtorSection;\n  const realtorHtml = rs?.hasRealtorAngle\n    ? `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:12px;border:1px solid #BBF7D0;border-radius:8px;overflow:hidden;\">\n        <tr><td style=\"background:#F0FDF4;padding:7px 12px 5px;\">\n          <span style=\"font-size:9px;font-weight:700;color:#15803D;letter-spacing:0.1em;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\ud83c\udfe1 For Realtors &amp; Agents</span>\n        </td></tr>\n        <tr><td style=\"background:#F0FDF4;padding:4px 12px 8px;\">\n          <p style=\"margin:0 0 6px;font-size:12px;color:#166534;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">${rs.summary}</p>\n          ${(rs.actionables || []).map(a => `<p style=\"margin:0 0 3px;font-size:11px;color:#15803D;line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">\u2192 ${a}</p>`).join('')}\n        </td></tr>\n      </table>`\n    : '';\n\n  const linkHtml = story.sourceUrl\n    ? `<a href=\"${story.sourceUrl}\" style=\"display:inline-block;margin-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:${BRAND.blue};text-decoration:none;\">Read full story \u2192</a>`\n    : '';\n\n  return `<table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-bottom:12px;border-radius:10px;overflow:hidden;border:1px solid ${BRAND.border};\">\n    <tr>\n      <td style=\"width:4px;background:${borderColor};font-size:0;\">&nbsp;</td>\n      <td style=\"background:${BRAND.cardBg};padding:14px 16px;border-radius:0 10px 10px 0;\">\n        <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n          <tr><td>\n            <span style=\"display:inline-block;padding:3px 9px;background:${borderColor};color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.07em;border-radius:20px;text-transform:uppercase;\">${story.source}</span>\n            ${isTop ? ` <span style=\"display:inline-block;padding:3px 9px;background:${BRAND.blue};color:white;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.06em;border-radius:20px;\">\u2605 Top Story</span>` : ''}\n            ${emoji ? ` <span style=\"font-size:12px;\">${emoji}</span>` : ''}\n          </td></tr>\n          <tr><td style=\"padding-top:8px;\">\n            <p style=\"margin:0 0 5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:${BRAND.textPrimary};line-height:1.35;\">${story.headline}</p>\n            <p style=\"margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${BRAND.textSecondary};line-height:1.6;\">${story.summary}</p>\n            ${keyPointsHtml}\n            ${effectsHtml}\n            ${realtorHtml}\n            ${linkHtml}\n          </td></tr>\n        </table>\n      </td>\n    </tr>\n  </table>`;\n}).join('');\n\n// Watch list\nconst watchItems = (digest.watchList || []).map((item, i) =>\n  `<tr><td style=\"padding:8px 0;border-bottom:1px solid ${BRAND.border};vertical-align:top;\">\n    <table cellpadding=\"0\" cellspacing=\"0\"><tr>\n      <td style=\"width:28px;vertical-align:top;padding-top:1px;\">\n        <span style=\"display:inline-block;width:20px;height:20px;background:${BRAND.blue};border-radius:50%;text-align:center;line-height:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:700;color:white;\">${i+1}</span>\n      </td>\n      <td style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:${BRAND.textSecondary};line-height:1.6;\">${item}</td>\n    </tr></table>\n  </td></tr>`\n).join('');\n\nconst UNSUBSCRIBE_WEBHOOK = 'https://jwhfinancial.app.n8n.cloud/webhook/digest-unsubscribe';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">\n<meta name=\"color-scheme\" content=\"light\">\n<meta name=\"supported-color-schemes\" content=\"light\">\n<title>${digest.subject || 'Daily Mortgage Digest'}</title>\n</head>\n<body style=\"margin:0;padding:0;background:${BRAND.pageBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:${BRAND.pageBg};\">\n<tr><td align=\"center\" style=\"padding:20px 12px 32px;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;\">\n\n  <!-- BLUE TOP STRIPE -->\n  <tr><td style=\"background:${BRAND.blue};height:5px;border-radius:10px 10px 0 0;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n  <!-- HEADER -->\n  <tr><td style=\"background:${BRAND.navy};padding:22px 24px 20px;border-radius:0;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>\n      <td>\n        <p style=\"margin:0 0 2px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.14em;text-transform:uppercase;\">JWH Financial \u00b7 Daily Briefing \u00b7 ${digest.date}</p>\n        <p style=\"margin:0;font-size:22px;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.2;\">Mortgage &amp; Real Estate Digest</p>\n      </td>\n      <td align=\"right\" valign=\"middle\" style=\"padding-left:16px;\">\n        <div style=\"width:44px;height:44px;background:${BRAND.blue};border-radius:10px;text-align:center;line-height:44px;font-size:22px;\">\ud83c\udfe0</div>\n      </td>\n    </tr></table>\n  </td></tr>\n\n  <!-- MARKET SNAPSHOT -->\n  <tr><td style=\"background:${BRAND.cardBg};padding:20px 24px;border-top:none;\">\n    <p style=\"margin:0 0 3px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">Market Snapshot</p>\n    <p style=\"margin:0 0 16px;font-size:14px;color:${BRAND.textSecondary};line-height:1.65;\">${digest.marketSnapshot?.narrative || ''}</p>\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${rateRows}</table>\n  </td></tr>\n\n  <!-- DIVIDER -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:8px 0;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n  <!-- STORIES -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:0 0 4px;\">\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n      <tr><td style=\"padding:0 0 12px;\">\n        <p style=\"margin:0;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">Today's Top Stories</p>\n      </td></tr>\n    </table>\n    ${storyCards}\n  </td></tr>\n\n  <!-- DIVIDER -->\n  <tr><td style=\"background:${BRAND.pageBg};padding:4px 0;font-size:0;\">&nbsp;</td></tr>\n\n  <!-- WHAT TO WATCH -->\n  <tr><td style=\"background:${BRAND.cardBg};padding:20px 24px;border-radius:10px;\">\n    <p style=\"margin:0 0 12px;font-size:9px;font-weight:700;color:${BRAND.blue};letter-spacing:0.12em;text-transform:uppercase;\">What to Watch Today</p>\n    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">${watchItems}</table>\n    ${digest.closingNote ? `<p style=\"margin:14px 0 0;font-size:13px;color:${BRAND.textMuted};font-style:italic;line-height:1.6;border-top:1px solid ${BRAND.border};padding-top:12px;\">${digest.closingNote}</p>` : ''}\n  </td></tr>\n\n  <!-- FOOTER -->\n  <tr><td style=\"background:${BRAND.navy};padding:18px 24px;border-radius:0;text-align:center;margin-top:8px;\">\n    <p style=\"margin:0 0 3px;font-size:12px;font-weight:700;color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">JWH Financial \u00b7 Mortgage Digest</p>\n    <p style=\"margin:0 0 10px;font-size:10px;color:${BRAND.textMuted};font-family:'Courier New',Courier,monospace;\">mortgage-digest@jwhfinance.com</p>\n    <p style=\"margin:0 0 8px;font-size:9px;color:#374151;line-height:1.7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">HousingWire \u00b7 MND \u00b7 MBS Live \u00b7 NMP \u00b7 Fed \u00b7 CFPB \u00b7 Freddie Mac \u00b7 Fannie Mae<br>MBA \u00b7 NAR \u00b7 Inman \u00b7 Zillow \u00b7 Redfin \u00b7 NAHB \u00b7 CoStar \u00b7 BLS \u00b7 Census \u00b7 Conference Board \u00b7 Bloomberg RE \u00b7 WSJ Housing</p>\n    <p style=\"margin:0 0 10px;font-size:9px;color:#4B5563;font-style:italic;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">Summaries are independently generated. All rights belong to original publishers.</p>\n    <a href=\"${UNSUBSCRIBE_WEBHOOK}?email={{subscriber_email}}\" style=\"font-size:10px;color:${BRAND.textMuted};text-decoration:underline;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;\">Unsubscribe</a>\n  </td></tr>\n\n  <!-- BLUE BOTTOM STRIPE -->\n  <tr><td style=\"background:${BRAND.blue};height:4px;border-radius:0 0 10px 10px;font-size:0;line-height:0;\">&nbsp;</td></tr>\n\n</table>\n</td></tr>\n</table>\n</body></html>`;\n\nreturn [{ json: { html, subject: digest.subject || `\ud83c\udfe0 Mortgage Digest \u2014 ${digest.date}`, digest } }];\n"
       },
       "id": "build-email",
       "name": "Build HTML Email",
@@ -238,7 +238,7 @@
         "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "YOUR_GOOGLE_SHEET_ID",
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
           "mode": "id"
         },
         "sheetName": {
@@ -349,7 +349,7 @@
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "YOUR_GOOGLE_SHEET_ID",
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
           "mode": "id"
         },
         "sheetName": {
@@ -461,7 +461,7 @@
         "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "YOUR_GOOGLE_SHEET_ID",
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
           "mode": "id"
         },
         "sheetName": {
@@ -521,6 +521,152 @@
         680,
         820
       ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Digest",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.toISO() }}",
+            "subject": "={{ $('Build HTML Email').first().json.subject }}",
+            "html": "={{ $('Build HTML Email').first().json.html }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "save-digest",
+      "name": "Save Digest to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        2000,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Appends today's digest HTML and subject to the 'Digest' tab with a timestamp. References columns by header name. Unlimited history \u2014 one row per day. Used by the signup flow to send the latest digest to new subscribers immediately."
+    },
+    {
+      "parameters": {
+        "operation": "readAllMatchingRows",
+        "documentId": {
+          "__rl": true,
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Digest",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "id": "fetch-latest-digest",
+      "name": "Fetch Latest Digest",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        580
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Reads all rows from the Digest tab. The next node picks the most recent by timestamp. References columns by header name (timestamp, subject, html)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pick the row with the most recent timestamp from the Digest tab\nconst rows = $input.all().map(item => item.json);\n\nif (!rows || rows.length === 0) {\n  // No digest stored yet \u2014 skip the immediate send\n  return [{ json: { hasDigest: false } }];\n}\n\n// Sort by timestamp descending, take the first\nconst sorted = rows.sort((a, b) => {\n  return new Date(b.timestamp) - new Date(a.timestamp);\n});\n\nconst latest = sorted[0];\n\nif (!latest.html || !latest.subject) {\n  return [{ json: { hasDigest: false } }];\n}\n\nreturn [{ json: {\n  hasDigest: true,\n  subject: latest.subject,\n  html: latest.html,\n  timestamp: latest.timestamp,\n} }];"
+      },
+      "id": "get-recent-digest",
+      "name": "Get Most Recent Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        580
+      ],
+      "notes": "Sorts all Digest tab rows by timestamp descending and returns the most recent. Sets hasDigest=false if no digest has been stored yet so the send step is skipped gracefully."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasDigest }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-digest-check",
+      "name": "Has Digest?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        580
+      ],
+      "notes": "If a digest has been stored, send it immediately to the new subscriber. If not (first-ever signup before any digest has run), skip the send gracefully."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Validate Signup').item.json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "senderName": "Mortgage Digest | JWH Finance",
+          "replyTo": "mortgage-digest@jwhfinance.com",
+          "appendAttribution": false
+        }
+      },
+      "id": "send-latest-digest",
+      "name": "Send Latest Digest to New Subscriber",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1780,
+        540
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Sends the most recent digest immediately after signup. Subject and HTML are pulled from the Digest tab by header name. Sends from mortgage-digest@jwhfinance.com."
     }
   ],
   "connections": {
@@ -584,6 +730,13 @@
         [
           {
             "node": "Send via Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Digest to Sheet",
             "type": "main",
             "index": 0
           }
@@ -670,6 +823,11 @@
             "node": "Webhook Response",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Fetch Latest Digest",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -727,6 +885,40 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Fetch Latest Digest": {
+      "main": [
+        [
+          {
+            "node": "Get Most Recent Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Most Recent Digest": {
+      "main": [
+        [
+          {
+            "node": "Has Digest?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Digest?": {
+      "main": [
+        [
+          {
+            "node": "Send Latest Digest to New Subscriber",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },
