@@ -1,8 +1,6 @@
 import { useState } from "react";
 
-// ─── UPDATE THIS after deploying your n8n workflow ───────────────────────────
 const WEBHOOK_URL = "https://jwhfinancial.app.n8n.cloud/webhook-test/digest-signup";
-// ─────────────────────────────────────────────────────────────────────────────
 
 const ROLES = [
   { value: "", label: "Select your role…" },
@@ -14,265 +12,300 @@ const ROLES = [
   { value: "Other", label: "Other (please specify)" },
 ];
 
-const SOURCES = [
-  "HousingWire", "Mortgage News Daily", "MBS Live",
-  "National Mortgage Professional", "Federal Reserve",
-  "CFPB", "Freddie Mac", "Fannie Mae",
-  "MBA", "NAR", "Bloomberg RE", "WSJ Housing",
+const SAMPLE_RATES = [
+  { label: "30-YR FIXED", value: "6.81%", change: "-6 bps", down: true },
+  { label: "15-YR FIXED", value: "6.12%", change: "-4 bps", down: true },
+  { label: "10-YR TREASURY", value: "4.28%", change: "-5 bps", down: true },
+  { label: "MBS 6.0", value: "98-18", change: "+6 ticks", down: false },
 ];
 
-function Input({ label, required, error, children }) {
+const SOURCES = [
+  "HousingWire", "MND", "MBS Live", "Natl Mortgage Pro",
+  "Federal Reserve", "CFPB", "Freddie Mac", "Fannie Mae",
+  "MBA", "NAR", "Bloomberg", "WSJ",
+];
+
+// Brand tokens
+const B = {
+  navy: "#0D1321",
+  blue: "#3B6FE8",
+  green: "#22C55E",
+  red: "#DC2626",
+  pageBg: "#EEF0F5",
+  card: "#FFFFFF",
+  border: "#E2E5EC",
+  text: "#0D1321",
+  muted: "#6B7280",
+  light: "#9CA3AF",
+  effBg: "#EEF2FF",
+  effBorder: "#C7D2FE",
+};
+
+const inputStyle = (hasErr) => ({
+  width: "100%", padding: "11px 14px",
+  border: `1.5px solid ${hasErr ? B.red : B.border}`,
+  borderRadius: "8px", fontSize: "14px", color: B.text,
+  outline: "none", fontFamily: "inherit",
+  boxSizing: "border-box", background: B.card,
+  appearance: "none", WebkitAppearance: "none",
+  transition: "border-color 0.15s",
+});
+
+function Field({ label, required, error, children }) {
   return (
-    <div style={{ marginBottom: "16px" }}>
-      <label style={{ display: "block", fontSize: "11px", fontFamily: "'Courier New', monospace", color: "#94a3b8", letterSpacing: "0.08em", marginBottom: "6px" }}>
-        {label}{required && <span style={{ color: "#c9a84c", marginLeft: "3px" }}>*</span>}
+    <div style={{ marginBottom: "14px" }}>
+      <label style={{ display: "block", fontSize: "10px", fontWeight: "700", color: B.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
+        {label}{required && <span style={{ color: B.blue, marginLeft: "3px" }}>*</span>}
       </label>
       {children}
-      {error && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#ef4444" }}>{error}</p>}
+      {error && <p style={{ margin: "4px 0 0", fontSize: "11px", color: B.red }}>{error}</p>}
     </div>
   );
 }
 
-const fieldStyle = (hasError) => ({
-  width: "100%",
-  padding: "11px 14px",
-  background: "#0a0f1a",
-  border: `1px solid ${hasError ? "#ef4444" : "#1e3a5f"}`,
-  borderRadius: "6px",
-  fontSize: "13px",
-  color: "white",
-  outline: "none",
-  fontFamily: "inherit",
-  boxSizing: "border-box",
-  appearance: "none",
-  WebkitAppearance: "none",
-});
-
-function RateBar({ label, value }) {
+function RateRow({ label, value, change, down }) {
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-        <span style={{ fontSize: "10px", color: "#64748b", fontFamily: "'Courier New', monospace" }}>{label}</span>
-        <span style={{ fontSize: "10px", color: "#e2e8f0", fontFamily: "'Courier New', monospace", fontWeight: "600" }}>{value}</span>
-      </div>
-      <div style={{ height: "2px", background: "#1e293b", borderRadius: "1px" }}>
-        <div style={{ height: "2px", background: "#c9a84c", borderRadius: "1px", width: `${(parseFloat(value) / 10) * 100}%` }} />
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: `1px solid ${B.border}` }}>
+      <span style={{ fontSize: "11px", fontWeight: "600", color: B.muted, letterSpacing: "0.03em" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontFamily: "'Courier New', monospace", fontSize: "14px", fontWeight: "700", color: B.text }}>{value}</span>
+        <span style={{
+          padding: "2px 8px", borderRadius: "20px", fontSize: "10px", fontWeight: "700",
+          fontFamily: "'Courier New', monospace",
+          background: down ? "#F0FDF4" : "#FEF2F2",
+          color: down ? B.green : B.red,
+        }}>{change}</span>
       </div>
     </div>
   );
 }
 
 export default function DigestSignup() {
-  const [form, setForm] = useState({
-    firstName: "", lastName: "", email: "",
-    company: "", role: "", roleOther: "", phone: "",
-  });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
 
-  const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
+  const set = (field) => (e) => {
+    setForm(f => ({ ...f, [field]: e.target.value }));
+    setErrors(prev => ({ ...prev, [field]: null }));
+  };
 
   const validate = () => {
     const e = {};
-    if (!form.firstName.trim()) e.firstName = "First name is required.";
-    if (!form.lastName.trim()) e.lastName = "Last name is required.";
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Valid email is required.";
-    if (!form.role) e.role = "Please select your role.";
-    if (form.role === "Other" && !form.roleOther.trim()) e.roleOther = "Please describe your role.";
+    if (!form.firstName.trim()) e.firstName = "Required";
+    if (!form.lastName.trim()) e.lastName = "Required";
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email address";
+    if (!form.role) e.role = "Please select your role";
+    if (form.role === "Other" && !form.roleOther.trim()) e.roleOther = "Please describe your role";
     return e;
   };
 
   const handleSubmit = async () => {
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
-    setErrors({});
     setStatus("loading");
     try {
-      await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      setStatus("success");
-    } catch {
-      setStatus("success"); // show success even if webhook not yet live
-    }
+      await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    } catch { }
+    setStatus("success");
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", background: "#0a0f1a", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", background: B.pageBg, minHeight: "100vh" }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input:focus, select:focus { border-color: ${B.blue} !important; box-shadow: 0 0 0 3px rgba(59,111,232,0.12); }
+        input::placeholder { color: ${B.light}; }
+        select option { color: ${B.text}; background: white; }
+      `}</style>
 
-      {/* Ticker */}
-      <div style={{ background: "#080e17", borderBottom: "1px solid #1e293b", padding: "7px 0", overflow: "hidden", whiteSpace: "nowrap" }}>
-        <div style={{ display: "inline-flex", gap: "48px", animation: "ticker 30s linear infinite" }}>
-          {["30-YR FIXED · 6.82%", "15-YR FIXED · 6.14%", "10-YR TREASURY · 4.31%", "MBS 6.0 · 98-12", "SOFR · 5.31%", "FED FUNDS · 5.25–5.50%",
-            "30-YR FIXED · 6.82%", "15-YR FIXED · 6.14%", "10-YR TREASURY · 4.31%", "MBS 6.0 · 98-12", "SOFR · 5.31%", "FED FUNDS · 5.25–5.50%"].map((t, i) => (
-              <span key={i} style={{ fontSize: "10px", fontFamily: "'Courier New', monospace", color: "#334155", letterSpacing: "0.08em" }}>{t}</span>
-            ))}
+      {/* BLUE TOP STRIPE */}
+      <div style={{ height: "5px", background: B.blue }} />
+
+      {/* HEADER */}
+      <div style={{ background: B.navy, padding: "18px 24px" }}>
+        <div style={{ maxWidth: "980px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ margin: "0 0 1px", fontSize: "9px", fontWeight: "700", color: B.blue, letterSpacing: "0.14em", textTransform: "uppercase" }}>JWH Financial · Daily Briefing</p>
+            <h1 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "white", letterSpacing: "-0.02em" }}>Mortgage Digest</h1>
+          </div>
+          <div style={{ width: "40px", height: "40px", background: B.blue, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>🏠</div>
         </div>
-        <style>{`
-          @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-          @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-          select option { background: #0a0f1a; color: white; }
-        `}</style>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 20px 60px" }}>
+      <div style={{ maxWidth: "980px", margin: "0 auto", padding: "36px 20px 60px", animation: "fadeUp 0.45s ease both" }}>
 
-        {/* Hero */}
-        <div style={{ maxWidth: "600px", width: "100%", textAlign: "center", padding: "60px 0 40px", animation: "fadeUp 0.5s ease both" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#080e17", border: "1px solid #1e3a5f", borderRadius: "4px", padding: "5px 14px", marginBottom: "28px" }}>
-            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#c9a84c", boxShadow: "0 0 8px #c9a84c" }} />
-            <span style={{ fontSize: "10px", fontFamily: "'Courier New', monospace", color: "#c9a84c", letterSpacing: "0.12em", fontWeight: "600" }}>DAILY BRIEFING · MORTGAGE & REAL ESTATE</span>
+        {/* HERO */}
+        <div style={{ textAlign: "center", marginBottom: "40px" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", padding: "5px 14px", marginBottom: "18px" }}>
+            <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: B.green }} />
+            <span style={{ fontSize: "11px", fontWeight: "600", color: B.muted }}>Delivered every weekday at 6 AM</span>
           </div>
-          <h1 style={{ margin: "0 0 18px", fontSize: "clamp(34px, 6vw, 54px)", fontWeight: "800", color: "white", lineHeight: "1.1", letterSpacing: "-0.03em" }}>
-            The market moves<br /><span style={{ color: "#c9a84c" }}>before you wake up.</span>
-          </h1>
-          <p style={{ margin: "0 auto", maxWidth: "460px", fontSize: "15px", color: "#64748b", lineHeight: "1.7" }}>
-            One email, every weekday at 6 AM. The most important mortgage and real estate news — rates, MBS, Fed moves, housing data — distilled from 12 industry sources, with first and second order effects analysis.
+          <h2 style={{ margin: "0 0 14px", fontSize: "clamp(30px, 5vw, 46px)", fontWeight: "800", color: B.navy, letterSpacing: "-0.03em", lineHeight: "1.1" }}>
+            The mortgage market<br />
+            <span style={{ color: B.blue }}>summarized before breakfast.</span>
+          </h2>
+          <p style={{ margin: "0 auto", maxWidth: "420px", fontSize: "15px", color: B.muted, lineHeight: "1.7" }}>
+            Rates, MBS, Fed moves, housing data, and effects analysis — distilled from 12 industry sources into one sharp email.
           </p>
         </div>
 
-        {/* Two-column layout: form + preview */}
-        <div style={{ maxWidth: "960px", width: "100%", display: "flex", gap: "28px", flexWrap: "wrap", alignItems: "flex-start", animation: "fadeUp 0.5s 0.1s ease both" }}>
+        {/* TWO COLUMN */}
+        <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "flex-start" }}>
 
-          {/* Signup Form */}
-          <div style={{ flex: "1 1 380px", background: "#0d1520", border: "1px solid #1e293b", borderRadius: "12px", padding: "28px" }}>
-            {status === "success" ? (
-              <div style={{ textAlign: "center", padding: "32px 0" }}>
-                <div style={{ fontSize: "40px", marginBottom: "16px" }}>✅</div>
-                <h3 style={{ margin: "0 0 8px", color: "white", fontSize: "18px", fontWeight: "700" }}>You're on the list.</h3>
-                <p style={{ margin: 0, fontSize: "13px", color: "#64748b", lineHeight: "1.6" }}>
-                  Check your inbox for a confirmation. Your first digest arrives tomorrow at 6 AM.
-                </p>
-              </div>
-            ) : (
-              <>
-                <h2 style={{ margin: "0 0 6px", fontSize: "16px", fontWeight: "700", color: "white" }}>Subscribe free</h2>
-                <p style={{ margin: "0 0 22px", fontSize: "12px", color: "#475569" }}>No spam. Unsubscribe anytime.</p>
+          {/* FORM */}
+          <div style={{ flex: "1 1 340px", background: B.card, borderRadius: "14px", border: `1px solid ${B.border}`, overflow: "hidden", boxShadow: "0 2px 8px rgba(13,19,33,0.07)" }}>
+            <div style={{ background: B.navy, padding: "16px 20px" }}>
+              <p style={{ margin: "0 0 2px", fontSize: "9px", fontWeight: "700", color: B.blue, letterSpacing: "0.12em", textTransform: "uppercase" }}>Subscribe Free</p>
+              <p style={{ margin: 0, fontSize: "13px", color: "#9CA3AF" }}>No spam. Unsubscribe anytime.</p>
+            </div>
 
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <div style={{ flex: 1 }}>
-                    <Input label="FIRST NAME" required error={errors.firstName}>
-                      <input type="text" value={form.firstName} onChange={set("firstName")} placeholder="Jane" style={fieldStyle(errors.firstName)} />
-                    </Input>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Input label="LAST NAME" required error={errors.lastName}>
-                      <input type="text" value={form.lastName} onChange={set("lastName")} placeholder="Smith" style={fieldStyle(errors.lastName)} />
-                    </Input>
-                  </div>
+            <div style={{ padding: "20px" }}>
+              {status === "success" ? (
+                <div style={{ textAlign: "center", padding: "30px 0" }}>
+                  <div style={{ width: "52px", height: "52px", background: "#F0FDF4", border: `2px solid ${B.green}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "22px" }}>✅</div>
+                  <h3 style={{ margin: "0 0 8px", color: B.navy, fontSize: "18px", fontWeight: "700" }}>You're on the list.</h3>
+                  <p style={{ margin: 0, fontSize: "13px", color: B.muted, lineHeight: "1.65" }}>Check your inbox for a confirmation.<br />First digest arrives tomorrow at 6 AM.</p>
                 </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ flex: 1 }}>
+                      <Field label="First Name" required error={errors.firstName}>
+                        <input type="text" value={form.firstName} onChange={set("firstName")} placeholder="Jane" style={inputStyle(errors.firstName)} />
+                      </Field>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Field label="Last Name" required error={errors.lastName}>
+                        <input type="text" value={form.lastName} onChange={set("lastName")} placeholder="Smith" style={inputStyle(errors.lastName)} />
+                      </Field>
+                    </div>
+                  </div>
 
-                <Input label="EMAIL" required error={errors.email}>
-                  <input type="email" value={form.email} onChange={set("email")} placeholder="jane@company.com" style={fieldStyle(errors.email)} />
-                </Input>
+                  <Field label="Work Email" required error={errors.email}>
+                    <input type="email" value={form.email} onChange={set("email")} placeholder="jane@company.com" style={inputStyle(errors.email)} />
+                  </Field>
 
-                <Input label="COMPANY" error={errors.company}>
-                  <input type="text" value={form.company} onChange={set("company")} placeholder="ABC Mortgage (optional)" style={fieldStyle(false)} />
-                </Input>
+                  <Field label="Company" error={null}>
+                    <input type="text" value={form.company} onChange={set("company")} placeholder="ABC Mortgage (optional)" style={inputStyle(false)} />
+                  </Field>
 
-                <Input label="YOUR ROLE" required error={errors.role}>
-                  <select value={form.role} onChange={set("role")} style={{ ...fieldStyle(errors.role), color: form.role ? "white" : "#475569", cursor: "pointer" }}>
-                    {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
-                </Input>
+                  <Field label="Your Role" required error={errors.role}>
+                    <select value={form.role} onChange={set("role")} style={{ ...inputStyle(errors.role), color: form.role ? B.text : B.light, cursor: "pointer" }}>
+                      {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </Field>
 
-                {form.role === "Other" && (
-                  <Input label="DESCRIBE YOUR ROLE" required error={errors.roleOther}>
-                    <input type="text" value={form.roleOther} onChange={set("roleOther")} placeholder="e.g. Mortgage Processor" style={fieldStyle(errors.roleOther)} />
-                  </Input>
-                )}
+                  {form.role === "Other" && (
+                    <Field label="Describe Your Role" required error={errors.roleOther}>
+                      <input type="text" value={form.roleOther} onChange={set("roleOther")} placeholder="e.g. Mortgage Processor" style={inputStyle(errors.roleOther)} />
+                    </Field>
+                  )}
 
-                <Input label="PHONE NUMBER" error={errors.phone}>
-                  <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000 (optional)" style={fieldStyle(false)} />
-                </Input>
+                  <Field label="Phone Number" error={null}>
+                    <input type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000 (optional)" style={inputStyle(false)} />
+                  </Field>
 
-                <button
-                  onClick={handleSubmit}
-                  disabled={status === "loading"}
-                  style={{
-                    width: "100%", padding: "13px", marginTop: "4px",
-                    background: status === "loading" ? "#475569" : "#c9a84c",
-                    color: "#0a0f1a", border: "none", borderRadius: "8px",
-                    fontSize: "14px", fontWeight: "700", cursor: status === "loading" ? "not-allowed" : "pointer",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  {status === "loading" ? "Subscribing…" : "Subscribe free →"}
-                </button>
-              </>
-            )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={status === "loading"}
+                    style={{
+                      width: "100%", padding: "13px 20px", marginTop: "4px",
+                      background: status === "loading" ? B.light : B.blue,
+                      color: "white", border: "none", borderRadius: "8px",
+                      fontSize: "14px", fontWeight: "700",
+                      cursor: status === "loading" ? "not-allowed" : "pointer",
+                      letterSpacing: "0.01em", transition: "background 0.15s",
+                    }}
+                  >
+                    {status === "loading" ? "Subscribing…" : "Subscribe free →"}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Email Preview */}
-          <div style={{ flex: "1 1 380px", background: "#0d1520", border: "1px solid #1e293b", borderRadius: "12px", overflow: "hidden" }}>
+          {/* EMAIL PREVIEW */}
+          <div style={{ flex: "1 1 380px", background: B.card, borderRadius: "14px", border: `1px solid ${B.border}`, overflow: "hidden", boxShadow: "0 2px 8px rgba(13,19,33,0.07)" }}>
             {/* Email chrome */}
-            <div style={{ background: "#080e17", borderBottom: "1px solid #1e293b", padding: "12px 18px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ background: "#F9FAFB", borderBottom: `1px solid ${B.border}`, padding: "10px 16px", display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ display: "flex", gap: "5px" }}>
-                {["#ef4444", "#f59e0b", "#22c55e"].map((c, i) => <div key={i} style={{ width: "9px", height: "9px", borderRadius: "50%", background: c, opacity: 0.6 }} />)}
+                {["#F87171", "#FBBF24", "#34D399"].map((c, i) => <div key={i} style={{ width: "9px", height: "9px", borderRadius: "50%", background: c }} />)}
               </div>
-              <div style={{ flex: 1, background: "#0d1520", borderRadius: "3px", padding: "4px 10px", textAlign: "center" }}>
-                <span style={{ fontSize: "10px", color: "#334155", fontFamily: "'Courier New', monospace" }}>🏠 Daily Mortgage Digest — Wednesday, June 18</span>
+              <div style={{ flex: 1, background: B.card, border: `1px solid ${B.border}`, borderRadius: "4px", padding: "3px 10px", textAlign: "center" }}>
+                <span style={{ fontSize: "10px", color: B.muted }}>🏠 Mortgage Digest — Thursday, June 19</span>
               </div>
             </div>
-            <div style={{ padding: "20px 22px 24px" }}>
-              <div style={{ borderBottom: "1px solid #1e293b", paddingBottom: "14px", marginBottom: "16px" }}>
-                <div style={{ fontSize: "9px", color: "#c9a84c", fontFamily: "'Courier New', monospace", letterSpacing: "0.1em", marginBottom: "7px" }}>MARKET SNAPSHOT</div>
-                <p style={{ margin: "0 0 12px", fontSize: "12px", color: "#cbd5e1", lineHeight: "1.65" }}>
-                  30-year fixed rates ticked up 4bps to 6.86% after stronger-than-expected jobless claims data dampened rate-cut expectations. MBS sold off modestly before stabilizing. Yields are 2–5bps higher across the curve.
-                </p>
-                <RateBar label="30-YR FIXED" value="6.86%" />
-                <RateBar label="15-YR FIXED" value="6.19%" />
-                <RateBar label="10-YR T-NOTE" value="4.34%" />
-              </div>
 
-              <div style={{ fontSize: "9px", color: "#c9a84c", fontFamily: "'Courier New', monospace", letterSpacing: "0.1em", marginBottom: "12px" }}>TODAY'S TOP STORIES</div>
+            {/* Blue stripe */}
+            <div style={{ height: "4px", background: B.blue }} />
+
+            {/* Email header */}
+            <div style={{ background: B.navy, padding: "18px 20px" }}>
+              <p style={{ margin: "0 0 2px", fontSize: "8px", fontWeight: "700", color: B.blue, letterSpacing: "0.14em", textTransform: "uppercase" }}>JWH Financial · Daily Briefing · Thu Jun 19</p>
+              <p style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "white", letterSpacing: "-0.02em", lineHeight: "1.2" }}>Mortgage &amp; Real Estate Digest</p>
+            </div>
+
+            {/* Market snapshot */}
+            <div style={{ background: B.card, padding: "16px 20px", borderBottom: `6px solid ${B.pageBg}` }}>
+              <p style={{ margin: "0 0 3px", fontSize: "8px", fontWeight: "700", color: B.blue, letterSpacing: "0.12em", textTransform: "uppercase" }}>Market Snapshot</p>
+              <p style={{ margin: "0 0 12px", fontSize: "12px", color: B.muted, lineHeight: "1.6" }}>Rates pulled back 6bps after softer PPI data. MBS rallied 12 ticks before giving back half gains on Powell's remarks.</p>
+              {SAMPLE_RATES.map((r, i) => <RateRow key={i} {...r} />)}
+            </div>
+
+            {/* Stories */}
+            <div style={{ background: B.pageBg, padding: "16px 20px" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "8px", fontWeight: "700", color: B.blue, letterSpacing: "0.12em", textTransform: "uppercase" }}>Today's Top Stories</p>
 
               {[
-                { source: "HousingWire", color: "#1a3a5c", headline: "Existing home sales fall 2.1% in May", summary: "NAR reported existing home sales at a SAAR of 4.11M — the third consecutive monthly drop. Median price rose 4.8% YoY to $422,000.", first: ["Purchase demand softens further", "Rate locks fall ~6% WoW"], second: ["Builder incentives increase as new vs resale gap widens", "LO comp pressure intensifies in Q3"] },
-                { source: "Federal Reserve", color: "#2d6a4f", headline: "Fed minutes signal two cuts possible in 2024", summary: "Most members believe policy is sufficiently restrictive, but several flagged downside risks to employment. Markets priced a 68% chance of a September cut.", first: ["Rate vol spikes on uncertain cut timing", "MBS spreads tighten 3–5bps"], second: ["Refi pipeline rebuilds if Sept cut materializes", "ARM demand may soften as fixed/ARM spread narrows"] },
-              ].map((s, i) => (
-                <div key={i} style={{ borderLeft: `3px solid ${s.color}`, paddingLeft: "12px", marginBottom: i === 0 ? "14px" : 0 }}>
-                  <div style={{ fontSize: "8px", fontFamily: "'Courier New', monospace", color: "#475569", marginBottom: "3px", letterSpacing: "0.08em" }}>{s.source.toUpperCase()} &nbsp;▲ TOP STORY</div>
-                  <p style={{ margin: "0 0 3px", fontSize: "11px", fontWeight: "700", color: "#e2e8f0", lineHeight: "1.35" }}>{s.headline}</p>
-                  <p style={{ margin: "0 0 8px", fontSize: "10px", color: "#64748b", lineHeight: "1.5" }}>{s.summary}</p>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "8px", fontFamily: "'Courier New', monospace", color: "#c9a84c", marginBottom: "3px" }}>⚡ 1ST ORDER</div>
-                      {s.first.map((f, j) => <p key={j} style={{ margin: "0 0 2px", fontSize: "9px", color: "#64748b", lineHeight: "1.5" }}>• {f}</p>)}
+                { source: "Federal Reserve", color: "#065F46", headline: "Powell signals rates staying higher for longer", summary: "Chair Powell pushed back on rate-cut expectations, citing persistent inflation pressures.", isTop: true },
+                { source: "HousingWire", color: "#1E3A8A", headline: "Existing sales hit 14-year low as supply crunch deepens", summary: "NAR: SAAR of 3.96M in May. Only 1.08M homes on market — 2.9 months supply.", isTop: true },
+                { source: "MBS Live", color: "#C2410C", headline: "MBS spreads tighten 8bps on money manager demand", summary: "30yr current coupon spread over Treasuries tightened to 161bps, tightest since March.", isTop: false },
+              ].map((story, i) => (
+                <div key={i} style={{ display: "flex", marginBottom: "10px", borderRadius: "8px", overflow: "hidden", border: `1px solid ${B.border}`, boxShadow: "0 1px 2px rgba(13,19,33,0.04)" }}>
+                  <div style={{ width: "4px", background: story.color, flexShrink: 0 }} />
+                  <div style={{ background: B.card, padding: "10px 12px", flex: 1 }}>
+                    <div style={{ marginBottom: "5px", display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-block", padding: "2px 8px", background: story.color, color: "white", fontSize: "8px", fontWeight: "700", borderRadius: "20px", letterSpacing: "0.06em", textTransform: "uppercase" }}>{story.source}</span>
+                      {story.isTop && <span style={{ display: "inline-block", padding: "2px 8px", background: B.blue, color: "white", fontSize: "8px", fontWeight: "700", borderRadius: "20px" }}>★ Top Story</span>}
                     </div>
-                    <div style={{ flex: 1, borderLeft: "1px solid #1e293b", paddingLeft: "8px" }}>
-                      <div style={{ fontSize: "8px", fontFamily: "'Courier New', monospace", color: "#6b7fa8", marginBottom: "3px" }}>〜 2ND ORDER</div>
-                      {s.second.map((f, j) => <p key={j} style={{ margin: "0 0 2px", fontSize: "9px", color: "#475569", lineHeight: "1.5" }}>• {f}</p>)}
-                    </div>
+                    <p style={{ margin: "0 0 4px", fontSize: "12px", fontWeight: "700", color: B.navy, lineHeight: "1.3" }}>{story.headline}</p>
+                    <p style={{ margin: 0, fontSize: "11px", color: B.muted, lineHeight: "1.5" }}>{story.summary}</p>
                   </div>
                 </div>
               ))}
 
-              <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid #1e293b", fontSize: "9px", color: "#334155", fontFamily: "'Courier New', monospace" }}>
-                + 5 more stories · Sources: HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA · NAR · Bloomberg · WSJ
-              </div>
+              <p style={{ margin: "6px 0 0", fontSize: "9px", color: B.light, textAlign: "center" }}>+ effects analysis and what to watch in every digest</p>
             </div>
+
+            {/* Footer */}
+            <div style={{ background: B.navy, padding: "12px 20px", textAlign: "center" }}>
+              <p style={{ margin: "0 0 2px", fontSize: "11px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage Digest</p>
+              <p style={{ margin: 0, fontSize: "9px", color: B.light, fontFamily: "'Courier New', monospace" }}>mortgage-digest@jwhfinance.com</p>
+            </div>
+            <div style={{ height: "3px", background: B.blue }} />
           </div>
         </div>
 
-        {/* Sources */}
-        <div style={{ maxWidth: "960px", width: "100%", marginTop: "36px", textAlign: "center", animation: "fadeUp 0.5s 0.2s ease both" }}>
-          <p style={{ margin: "0 0 12px", fontSize: "10px", color: "#1e293b", fontFamily: "'Courier New', monospace", letterSpacing: "0.08em" }}>PULLING FROM 12 SOURCES DAILY</p>
+        {/* SOURCES */}
+        <div style={{ marginTop: "36px", textAlign: "center" }}>
+          <p style={{ margin: "0 0 10px", fontSize: "9px", fontWeight: "700", color: B.light, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pulling from 12 sources daily</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", justifyContent: "center" }}>
             {SOURCES.map((s, i) => (
-              <span key={i} style={{ padding: "4px 10px", border: "1px solid #1e293b", borderRadius: "3px", fontSize: "10px", color: "#334155", fontFamily: "'Courier New', monospace" }}>{s}</span>
+              <span key={i} style={{ padding: "4px 12px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", fontSize: "11px", fontWeight: "600", color: B.muted }}>{s}</span>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #1e293b", padding: "16px 20px", textAlign: "center" }}>
-        <p style={{ margin: 0, fontSize: "11px", color: "#1e293b", fontFamily: "'Courier New', monospace" }}>
-          Mortgage Digest — JWH Finance · mortgage-digest@jwhfinance.com · Free · No spam · Unsubscribe anytime
+      {/* FOOTER */}
+      <div style={{ background: B.navy, padding: "16px 20px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: "11px", color: "#4B5563", fontFamily: "'Courier New', monospace" }}>
+          JWH Financial · mortgage-digest@jwhfinance.com · Free · Unsubscribe anytime
         </p>
       </div>
+      <div style={{ height: "4px", background: B.blue }} />
     </div>
   );
 }
