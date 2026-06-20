@@ -1,4 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// Responsive hook — returns current window width
+const useWindowWidth = () => {
+  const [width, setWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handle = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, []);
+  return width;
+};
 
 const WEBHOOK_URL = "https://jwhfinancial.app.n8n.cloud/webhook/digest-signup";
 
@@ -92,18 +103,27 @@ function StoryCard({ story }) {
 export default function DigestSignup() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
 
-  // Detect local delivery time — digest sends at 6 AM Pacific time
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 620;
+
+  // Detect local delivery time — digest sends at 6 AM PT
+  // n8n is set to PT and handles DST automatically.
+  // Intl API converts 6 AM PT to the correct local time for each visitor.
   const getLocalDeliveryTime = () => {
     try {
-      const sendTimeUTC = new Date();
-      sendTimeUTC.setUTCHours(14, 0, 0, 0); // 14:00 UTC = 6 AM PT
-      return sendTimeUTC.toLocaleTimeString([], {
+      // Build today at 6 AM PT — correctly accounts for DST
+      const ptDate = new Date(new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" }));
+      ptDate.setTime(ptDate.getTime() + 6 * 60 * 60 * 1000);
+      // Convert to visitor local time
+      const localStr = ptDate.toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
         timeZoneName: "short",
       });
+      // Strip D/S: PDT→PT, PST→PT, EDT→ET, EST→ET, CDT→CT, CST→CT, MDT→MT, MST→MT
+      return localStr.replace(/\b(P|E|C|M)(D|S)T\b/g, "$1T");
     } catch {
-      return "6 AM ET";
+      return "6 AM PT";
     }
   };
   const deliveryTime = getLocalDeliveryTime();
@@ -158,7 +178,7 @@ export default function DigestSignup() {
       </div>
 
       {/* HERO + FORM SECTION */}
-      <div style={{ background: B.pageBg, padding: "40px 24px 32px" }}>
+      <div style={{ background: B.pageBg, padding: isMobile ? "28px 16px 24px" : "40px 24px 32px" }}>
         <div style={{ maxWidth: "860px", margin: "0 auto", animation: "fadeUp 0.45s ease both" }}>
 
           {/* Hero text — centered */}
@@ -244,7 +264,7 @@ export default function DigestSignup() {
                 <button
                   onClick={handleSubmit}
                   disabled={status === "loading"}
-                  style={{ width: "100%", padding: "14px 20px", background: status === "loading" ? B.light : B.blue, color: "white", border: "none", borderRadius: "9px", fontSize: "15px", fontWeight: "700", cursor: status === "loading" ? "not-allowed" : "pointer", letterSpacing: "0.01em" }}
+                  style={{ width: "100%", padding: isMobile ? "16px 20px" : "14px 20px", background: status === "loading" ? B.light : B.blue, color: "white", border: "none", borderRadius: "9px", fontSize: "15px", fontWeight: "700", cursor: status === "loading" ? "not-allowed" : "pointer", letterSpacing: "0.01em" }}
                 >
                   {status === "loading" ? "subscribing…" : "subscribe free"}
                 </button>
@@ -256,12 +276,12 @@ export default function DigestSignup() {
       </div>
 
       {/* PREVIEW SECTION */}
-      <div style={{ background: "#E4E7EF", padding: "28px 24px" }}>
+      <div style={{ background: "#E4E7EF", padding: isMobile ? "20px 12px" : "28px 24px" }}>
         <div style={{ maxWidth: "860px", margin: "0 auto" }}>
           <p style={{ margin: "0 0 20px", fontSize: "10px", fontWeight: "700", color: B.light, letterSpacing: "0.12em", textTransform: "uppercase", textAlign: "center" }}>Sample Digest Preview</p>
 
           {/* Email preview card */}
-          <div style={{ background: B.card, borderRadius: "14px", border: `1px solid ${B.border}`, overflow: "hidden", boxShadow: "0 2px 12px rgba(13,19,33,0.08)" }}>
+          <div style={{ background: B.card, borderRadius: "14px", border: `1px solid ${B.border}`, overflow: "hidden", boxShadow: "0 2px 12px rgba(13,19,33,0.08)", overflowX: "auto" }}>
 
             {/* Blue stripe */}
             <div style={{ height: "5px", background: B.blue }} />
@@ -306,23 +326,3 @@ export default function DigestSignup() {
 
       {/* SOURCES */}
       <div style={{ background: B.pageBg, padding: "36px 24px 48px" }}>
-        <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
-          <p style={{ margin: "0 0 14px", fontSize: "10px", fontWeight: "700", color: B.light, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pulling from 20 sources daily</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
-            {SOURCES.map((s, i) => (
-              <span key={i} style={{ padding: "5px 14px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", fontSize: "12px", fontWeight: "600", color: B.muted }}>{s}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* PAGE FOOTER */}
-      <div style={{ background: B.navy, padding: "16px 24px", textAlign: "center" }}>
-        <p style={{ margin: 0, fontSize: "11px", color: "#4B5563", fontFamily: "'Courier New', monospace" }}>
-          JWH Financial · mortgage-digest@jwhfinance.com · Free · Unsubscribe anytime
-        </p>
-      </div>
-      <div style={{ height: "4px", background: B.blue }} />
-    </div>
-  );
-}
