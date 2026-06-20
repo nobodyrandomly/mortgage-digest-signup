@@ -326,3 +326,23 @@ export default function DigestSignup() {
 
       {/* SOURCES */}
       <div style={{ background: B.pageBg, padding: "36px 24px 48px" }}>
+        <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
+          <p style={{ margin: "0 0 14px", fontSize: "10px", fontWeight: "700", color: B.light, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pulling from 20 sources daily</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
+            {SOURCES.map((s, i) => (
+              <span key={i} style={{ padding: "5px 14px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", fontSize: "12px", fontWeight: "600", color: B.muted }}>{s}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* PAGE FOOTER */}
+      <div style={{ background: B.navy, padding: "16px 24px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: "11px", color: "#4B5563", fontFamily: "'Courier New', monospace" }}>
+          JWH Financial · mortgage-digest@jwhfinance.com · Free · Unsubscribe anytime
+        </p>
+      </div>
+      <div style={{ height: "4px", background: B.blue }} />
+    </div>
+  );
+}
