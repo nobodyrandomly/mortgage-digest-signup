@@ -1,0 +1,177 @@
+{
+  "name": "Mortgage Digest \u2014 Bounce Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "bounce-cron",
+      "name": "Check Bounces (every 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "notes": "Runs every 6 hours to scan for bounce notifications. Adjust cron as needed: '0 */6 * * *' = every 6h, '0 8,20 * * *' = 8am & 8pm."
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 50,
+        "filters": {
+          "q": "from:(mailer-daemon@googlemail.com OR postmaster) subject:(\"Delivery Status Notification\" OR \"Undelivered\" OR \"failure\" OR \"returned\") is:unread newer_than:2d"
+        },
+        "options": {}
+      },
+      "id": "gmail-search-bounces",
+      "name": "Search Bounce Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Searches inbox for bounce notifications from mailer-daemon/postmaster in the last 2 days that are still unread. Gmail query handles the filtering."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the failed recipient email from each bounce notification.\n// Gmail bounce messages include the original recipient address in the body\n// and headers. We look for common patterns.\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n  // Combine available text fields to search\n  const haystack = [\n    msg.snippet || '',\n    msg.text || '',\n    msg.textPlain || '',\n    msg.textHtml || '',\n    JSON.stringify(msg.headers || {}),\n  ].join(' ');\n\n  // Common bounce patterns for the failed address:\n  // \"Final-Recipient: rfc822; user@domain.com\"\n  // \"to user@domain.com\"\n  // \"<user@domain.com>: ... not found\"\n  let failedEmail = null;\n\n  // Pattern 1: Final-Recipient header (most reliable)\n  const finalRecipient = haystack.match(/Final-Recipient:\\s*rfc822;\\s*([^\\s<>]+@[^\\s<>]+)/i);\n  if (finalRecipient) {\n    failedEmail = finalRecipient[1];\n  }\n\n  // Pattern 2: Original-Recipient header\n  if (!failedEmail) {\n    const origRecipient = haystack.match(/Original-Recipient:\\s*rfc822;\\s*([^\\s<>]+@[^\\s<>]+)/i);\n    if (origRecipient) failedEmail = origRecipient[1];\n  }\n\n  // Pattern 3: angle-bracket address near failure language\n  if (!failedEmail) {\n    const bracketMatch = haystack.match(/<([^\\s<>]+@[^\\s<>]+)>/);\n    if (bracketMatch) failedEmail = bracketMatch[1];\n  }\n\n  if (failedEmail) {\n    // Clean trailing punctuation and lowercase\n    failedEmail = failedEmail.replace(/[.,;:>]+$/, '').toLowerCase().trim();\n    // Skip our own sender address\n    if (!failedEmail.includes('mortgage-digest@jwhfinance.com') &&\n        !failedEmail.includes('mailer-daemon') &&\n        !failedEmail.includes('postmaster')) {\n      results.push({\n        json: {\n          bouncedEmail: failedEmail,\n          messageId: msg.id || null,\n          detectedAt: new Date().toISOString(),\n        }\n      });\n    }\n  }\n}\n\nif (results.length === 0) {\n  console.log('[BOUNCE HANDLER] No bounced addresses found in this batch.');\n  return [];\n}\n\nconsole.log(`[BOUNCE HANDLER] Found ${results.length} bounced address(es): ${results.map(r => r.json.bouncedEmail).join(', ')}`);\nreturn results;"
+      },
+      "id": "extract-bounced",
+      "name": "Extract Bounced Addresses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "notes": "Parses each bounce email for the failed recipient address using Final-Recipient / Original-Recipient headers and angle-bracket fallback. Skips our own sender and daemon addresses. Returns one item per bounced address; empty if none found."
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Subscribers",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.bouncedEmail }}",
+            "active": "FALSE",
+            "bounced": "TRUE",
+            "bouncedAt": "={{ $json.detectedAt }}"
+          },
+          "matchingColumns": [
+            "email"
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-bounced",
+      "name": "Mark Subscriber Bounced",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Matches on email header, sets active=FALSE and bounced=TRUE with timestamp. Uses appendOrUpdate so it updates the existing subscriber row. Add 'bounced' and 'bouncedAt' columns to the Subscribers tab."
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Extract Bounced Addresses').item.json.messageId }}"
+      },
+      "id": "mark-read",
+      "name": "Mark Bounce as Read",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Marks the processed bounce notification as read so the next run's 'is:unread' filter skips it. Prevents reprocessing the same bounce."
+    }
+  ],
+  "connections": {
+    "Check Bounces (every 6h)": {
+      "main": [
+        [
+          {
+            "node": "Search Bounce Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Bounce Emails": {
+      "main": [
+        [
+          {
+            "node": "Extract Bounced Addresses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Bounced Addresses": {
+      "main": [
+        [
+          {
+            "node": "Mark Subscriber Bounced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Subscriber Bounced": {
+      "main": [
+        [
+          {
+            "node": "Mark Bounce as Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
