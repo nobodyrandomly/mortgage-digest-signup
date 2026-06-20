@@ -121,7 +121,7 @@ export default function DigestSignup() {
         timeZoneName: "short",
       });
       // Strip D/S: PDT→PT, PST→PT, EDT→ET, EST→ET, CDT→CT, CST→CT, MDT→MT, MST→MT
-      return localStr.replace(/\b(P|E|C|M)(D|S)T\b/g, "$1T");
+      return localStr.replace(/(PDT|PST|EDT|EST|CDT|CST|MDT|MST)/g, (m) => m[0] + "T");
     } catch {
       return "6 AM PT";
     }
