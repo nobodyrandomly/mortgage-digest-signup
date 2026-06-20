@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Analytics } from '@vercel/analytics/react';
 
 // Responsive hook — returns current window width
 const useWindowWidth = () => {
@@ -24,17 +25,17 @@ const ROLES = [
 ];
 
 const SAMPLE_RATES = [
-  { label: "30-YR FIXED", value: "6.81%", change: "-6 bps", down: true },
-  { label: "15-YR FIXED", value: "6.12%", change: "-4 bps", down: true },
-  { label: "10-YR TREASURY", value: "4.28%", change: "-5 bps", down: true },
-  { label: "MBS 6.0", value: "98-18", change: "+6 ticks", down: false },
+  { label: "30-YR FIXED",    value: "6.81%",  change: "-6 bps",   down: true  },
+  { label: "15-YR FIXED",    value: "6.12%",  change: "-4 bps",   down: true  },
+  { label: "10-YR TREASURY", value: "4.28%",  change: "-5 bps",   down: true  },
+  { label: "MBS 6.0",        value: "98-18",  change: "+6 ticks",  down: false },
 ];
 
 const SOURCES = [
-  "HousingWire", "MND", "MBS Live", "Natl Mortgage Pro", "Federal Reserve",
-  "CFPB", "Freddie Mac", "Fannie Mae", "MBA", "NAR", "Inman", "Zillow Research",
-  "Redfin News", "RealTrends", "NAHB", "CoStar", "Calculated Risk",
-  "BLS", "Census Bureau", "Conference Board", "Bloomberg RE", "WSJ Housing",
+  "HousingWire","MND","MBS Live","Natl Mortgage Pro","Federal Reserve",
+  "CFPB","Freddie Mac","Fannie Mae","MBA","NAR","Inman","Zillow Research",
+  "Redfin News","RealTrends","NAHB","CoStar","Calculated Risk",
+  "BLS","Census Bureau","Conference Board","Bloomberg RE","WSJ Housing",
 ];
 
 const STORIES = [
@@ -149,7 +150,7 @@ export default function DigestSignup() {
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setStatus("loading");
-    try { await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); } catch { }
+    try { await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); } catch {}
     setStatus("success");
   };
 
@@ -317,7 +318,7 @@ export default function DigestSignup() {
                 HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA<br />
                 NAR · Inman · Zillow · Redfin · NAHB · CoStar · BLS · Census · Conference Board · Bloomberg RE · WSJ Housing
               </p>
-              <button onClick={() => { }} style={{ fontSize: "11px", color: B.light, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unsubscribe</button>
+              <button onClick={() => {}} style={{ fontSize: "11px", color: B.light, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unsubscribe</button>
             </div>
             <div style={{ height: "4px", background: B.blue }} />
           </div>
@@ -326,3 +327,24 @@ export default function DigestSignup() {
 
       {/* SOURCES */}
       <div style={{ background: B.pageBg, padding: "36px 24px 48px" }}>
+        <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
+          <p style={{ margin: "0 0 14px", fontSize: "10px", fontWeight: "700", color: B.light, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pulling from 20 sources daily</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
+            {SOURCES.map((s, i) => (
+              <span key={i} style={{ padding: "5px 14px", background: B.card, border: `1px solid ${B.border}`, borderRadius: "20px", fontSize: "12px", fontWeight: "600", color: B.muted }}>{s}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* PAGE FOOTER */}
+      <div style={{ background: B.navy, padding: "16px 24px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: "11px", color: "#4B5563", fontFamily: "'Courier New', monospace" }}>
+          JWH Financial · mortgage-digest@jwhfinance.com · Free · Unsubscribe anytime
+        </p>
+      </div>
+      <div style={{ height: "4px", background: B.blue }} />
+      <Analytics />
+    </div>
+  );
+}
