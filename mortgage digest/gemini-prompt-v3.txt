@@ -99,3 +99,5 @@ For stories with no realtor angle set: "realtorSection": { "hasRealtorAngle": fa
 For stories without meaningful effects set: "effects": { "hasEffects": false }.
 Include 8-12 stories total. Mark 2-3 as high importance. Order: high importance first, then by recency.
 Aim for a mix: roughly half mortgage/lending stories, half real estate/market/macro stories.
+
+IMPORTANT: Output ONLY the JSON object. Do not include any reasoning, explanation, preamble, or commentary before or after the JSON. Your entire response must be the JSON object itself, optionally wrapped in a single ```json code fence.

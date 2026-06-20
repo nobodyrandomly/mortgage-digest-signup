@@ -101,7 +101,7 @@ function StoryCard({ story }) {
 }
 
 export default function DigestSignup() {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
+  const [form, setForm] = useState({ fullName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
 
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 620;
@@ -135,11 +135,45 @@ export default function DigestSignup() {
     setErrors(p => ({ ...p, [field]: null }));
   };
 
+  // Client-side email validation — mirrors server layers 1-3 (format, disposable, typo)
+  // Layer 4 (MX check) happens server-side on submit.
+  const DISPOSABLE_DOMAINS = [
+    "mailinator.com", "guerrillamail.com", "guerrillamail.net", "10minutemail.com",
+    "temp-mail.org", "tempmail.com", "throwawaymail.com", "yopmail.com", "getnada.com",
+    "trashmail.com", "sharklasers.com", "grr.la", "maildrop.cc", "dispostable.com",
+    "fakeinbox.com", "mailnesia.com", "mintemail.com", "spamgourmet.com", "mohmal.com",
+  ];
+  const TYPO_DOMAINS = {
+    "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gmal.com": "gmail.com",
+    "gmail.co": "gmail.com", "gmaill.com": "gmail.com", "gnail.com": "gmail.com",
+    "yahooo.com": "yahoo.com", "yaho.com": "yahoo.com", "yahoo.co": "yahoo.com",
+    "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com", "hotmil.com": "hotmail.com",
+    "outlok.com": "outlook.com", "outloo.com": "outlook.com", "iclould.com": "icloud.com",
+    "icloud.co": "icloud.com",
+  };
+
+  const checkEmail = (value) => {
+    const em = (value || "").trim().toLowerCase();
+    if (!em) return "Email address is required.";
+    const re = /^[a-z0-9](?:[a-z0-9._%+-]*[a-z0-9])?@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/i;
+    if (!re.test(em) || em.includes("..")) return "Please enter a valid email address.";
+    const domain = em.split("@")[1];
+    if (DISPOSABLE_DOMAINS.includes(domain)) return "Please use a permanent email address.";
+    if (TYPO_DOMAINS[domain]) return `Did you mean @${TYPO_DOMAINS[domain]}?`;
+    return null;
+  };
+
+  const handleEmailBlur = () => {
+    const err = checkEmail(form.email);
+    setErrors(p => ({ ...p, email: err }));
+  };
+
   const validate = () => {
     const e = {};
-    if (!form.firstName.trim()) e.firstName = "Required";
-    if (!form.lastName.trim()) e.lastName = "Required";
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email";
+    if (!form.fullName.trim()) e.fullName = "Required";
+    else if (!form.fullName.trim().includes(" ")) e.fullName = "Please enter your first and last name";
+    const emailErr = checkEmail(form.email);
+    if (emailErr) e.email = emailErr;
     if (!form.role) e.role = "Please select your role";
     if (form.role === "Other" && !form.roleOther.trim()) e.roleOther = "Please describe your role";
     return e;
@@ -150,11 +184,26 @@ export default function DigestSignup() {
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setStatus("loading");
     setErrors({});
+    // Split full name: first word = firstName, remainder = lastName
+    const trimmedName = form.fullName.trim().replace(/\s+/g, " ");
+    const parts = trimmedName.split(" ");
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(" ");
+    const payload = {
+      firstName,
+      lastName,
+      fullName: trimmedName,
+      email: form.email,
+      company: form.company,
+      role: form.role,
+      roleOther: form.roleOther,
+      phone: form.phone,
+    };
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setStatus("success");
@@ -225,33 +274,25 @@ export default function DigestSignup() {
 
               <div style={{ padding: "0" }}>
 
-                {/* Rows 1+2: two columns — Col 1: First/Last, Col 2: Email/Role */}
-                <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-
-                  {/* Column 1: First Name stacked above Last Name */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <div>
-                      <input type="text" value={form.firstName} onChange={set("firstName")} placeholder="First Name *" style={inp(errors.firstName)} />
-                      {errors.firstName && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.firstName}</p>}
-                    </div>
-                    <div>
-                      <input type="text" value={form.lastName} onChange={set("lastName")} placeholder="Last Name *" style={inp(errors.lastName)} />
-                      {errors.lastName && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.lastName}</p>}
-                    </div>
+                {/* Row 1: Work Email — single-column width, centered */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+                  <div style={{ width: isMobile ? "100%" : "calc(50% - 5px)" }}>
+                    <input type="email" value={form.email} onChange={set("email")} onBlur={handleEmailBlur} placeholder="Work Email *" style={{ ...inp(errors.email), textAlign: "center" }} />
+                    {errors.email && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red, textAlign: "center" }}>{errors.email}</p>}
                   </div>
+                </div>
 
-                  {/* Column 2: Work Email stacked above Role */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <div>
-                      <input type="email" value={form.email} onChange={set("email")} placeholder="Work Email *" style={inp(errors.email)} />
-                      {errors.email && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.email}</p>}
-                    </div>
-                    <div>
-                      <select value={form.role} onChange={set("role")} style={{ ...inp(errors.role), color: form.role ? B.text : B.light, cursor: "pointer" }}>
-                        {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                      </select>
-                      {errors.role && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.role}</p>}
-                    </div>
+                {/* Row 2: two columns — Full Name | Role */}
+                <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "10px", marginBottom: "10px" }}>
+                  <div style={{ flex: 1 }}>
+                    <input type="text" value={form.fullName} onChange={set("fullName")} placeholder="Full Name *" style={inp(errors.fullName)} />
+                    {errors.fullName && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.fullName}</p>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <select value={form.role} onChange={set("role")} style={{ ...inp(errors.role), color: form.role ? B.text : B.light, cursor: "pointer" }}>
+                      {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                    {errors.role && <p style={{ margin: "3px 0 0", fontSize: "11px", color: B.red }}>{errors.role}</p>}
                   </div>
                 </div>
 
