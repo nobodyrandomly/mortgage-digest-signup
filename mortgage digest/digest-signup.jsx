@@ -200,8 +200,8 @@ export default function DigestSignup() {
           {status === "success" ? (
             <div style={{ maxWidth: "560px", margin: "0 auto", textAlign: "center", padding: "32px 0" }}>
               <div style={{ width: "56px", height: "56px", background: "#F0FDF4", border: `2px solid ${B.green}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "24px" }}>✅</div>
-              <h3 style={{ margin: "0 0 8px", color: B.navy, fontSize: "20px", fontWeight: "700" }}>You're on the list.</h3>
-              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>{`The latest digest is on its way to your inbox now.`}<br />{`You'll receive each new digest every weekday at ${deliveryTime}.`}</p>
+              <h3 style={{ margin: "0 0 8px", color: B.navy, fontSize: "20px", fontWeight: "700" }}>You’re on the list.</h3>
+              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>{`The latest digest is on its way to your inbox now.`}<br />{`You’ll receive each new digest every weekday at ${deliveryTime}.`}</p>
             </div>
           ) : (
             <div style={{ maxWidth: "560px", margin: "0 auto" }}>
