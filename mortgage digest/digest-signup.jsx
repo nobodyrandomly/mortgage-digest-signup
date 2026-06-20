@@ -92,11 +92,11 @@ function StoryCard({ story }) {
 export default function DigestSignup() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", company: "", role: "", roleOther: "", phone: "" });
 
-  // Detect local delivery time — digest sends at 10:00 UTC (6 AM Eastern)
+  // Detect local delivery time — digest sends at 6 AM Pacific time
   const getLocalDeliveryTime = () => {
     try {
       const sendTimeUTC = new Date();
-      sendTimeUTC.setUTCHours(10, 0, 0, 0); // 10:00 UTC = 6 AM Eastern
+      sendTimeUTC.setUTCHours(14, 0, 0, 0); // 14:00 UTC = 6 AM PT
       return sendTimeUTC.toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -172,7 +172,7 @@ export default function DigestSignup() {
               <span style={{ color: B.blue }}>summarized before breakfast.</span>
             </h2>
             <p style={{ margin: "0 auto 24px", maxWidth: "460px", fontSize: "16px", color: B.muted, lineHeight: "1.7" }}>
-              Rates, MBS, Fed moves, housing data, and effects analysis — distilled from 20 industry sources into one sharp email, in your inbox by {deliveryTime}.
+              {`Rates, MBS, Fed moves, housing data, and effects analysis — distilled from 20 industry sources into one sharp email, in your inbox by ${deliveryTime}.`}
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export default function DigestSignup() {
             <div style={{ maxWidth: "560px", margin: "0 auto", textAlign: "center", padding: "32px 0" }}>
               <div style={{ width: "56px", height: "56px", background: "#F0FDF4", border: `2px solid ${B.green}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "24px" }}>✅</div>
               <h3 style={{ margin: "0 0 8px", color: B.navy, fontSize: "20px", fontWeight: "700" }}>You're on the list.</h3>
-              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>Check your inbox for a confirmation.<br />{`First digest arrives tomorrow at ${deliveryTime}.`}</p>
+              <p style={{ margin: 0, fontSize: "14px", color: B.muted, lineHeight: "1.7" }}>{`The latest digest is on its way to your inbox now.`}<br />{`You'll receive each new digest every weekday at ${deliveryTime}.`}</p>
             </div>
           ) : (
             <div style={{ maxWidth: "560px", margin: "0 auto" }}>
