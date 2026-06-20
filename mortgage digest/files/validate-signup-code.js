@@ -15,7 +15,6 @@ const role = (body.role || '').trim();
 const roleOther = (body.roleOther || '').trim();
 const phone = (body.phone || '').trim();
 const partnerId = (body.partnerId || '').trim().toLowerCase();
-const loIdDirect = (body.loId || '').trim().toLowerCase();
 
 const fail = (error) => [{ json: { valid: false, error } }];
 
@@ -132,6 +131,5 @@ return [{ json: {
   bouncedAt: '',
   unsubscribedAt: '',
   partnerId,
-  loIdDirect,
-  source: partnerId ? 'partner_page' : (loIdDirect ? 'lo_page' : 'landing_page'),
+  source: partnerId ? 'partner_page' : 'landing_page',
 }}];

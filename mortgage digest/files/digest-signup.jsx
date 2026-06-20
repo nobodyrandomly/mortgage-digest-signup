@@ -25,17 +25,17 @@ const ROLES = [
 ];
 
 const SAMPLE_RATES = [
-  { label: "30-YR FIXED", value: "6.81%", change: "-6 bps", down: true },
-  { label: "15-YR FIXED", value: "6.12%", change: "-4 bps", down: true },
-  { label: "10-YR TREASURY", value: "4.28%", change: "-5 bps", down: true },
-  { label: "MBS 6.0", value: "98-18", change: "+6 ticks", down: false },
+  { label: "30-YR FIXED",    value: "6.81%",  change: "-6 bps",   down: true  },
+  { label: "15-YR FIXED",    value: "6.12%",  change: "-4 bps",   down: true  },
+  { label: "10-YR TREASURY", value: "4.28%",  change: "-5 bps",   down: true  },
+  { label: "MBS 6.0",        value: "98-18",  change: "+6 ticks",  down: false },
 ];
 
 const SOURCES = [
-  "HousingWire", "MND", "MBS Live", "Natl Mortgage Pro", "Federal Reserve",
-  "CFPB", "Freddie Mac", "Fannie Mae", "MBA", "NAR", "Inman", "Zillow Research",
-  "Redfin News", "RealTrends", "NAHB", "CoStar", "Calculated Risk",
-  "BLS", "Census Bureau", "Conference Board", "Bloomberg RE", "WSJ Housing",
+  "HousingWire","MND","MBS Live","Natl Mortgage Pro","Federal Reserve",
+  "CFPB","Freddie Mac","Fannie Mae","MBA","NAR","Inman","Zillow Research",
+  "Redfin News","RealTrends","NAHB","CoStar","Calculated Risk",
+  "BLS","Census Bureau","Conference Board","Bloomberg RE","WSJ Housing",
 ];
 
 const STORIES = [
@@ -135,20 +135,15 @@ export default function DigestSignup() {
   // Renders instantly with JWH defaults; partner branding applies when config arrives.
   const [partner, setPartner] = useState(null);
   useEffect(() => {
-    let partnerId = "", loId = "";
+    let partnerId = "";
     try {
-      const params = new URLSearchParams(window.location.search);
-      partnerId = params.get("partner") || "";
-      loId = params.get("lo") || "";
-    } catch { partnerId = ""; loId = ""; }
-    if (!partnerId && !loId) return;
-    const queryStr = partnerId
-      ? `partner=${encodeURIComponent(partnerId)}`
-      : `lo=${encodeURIComponent(loId)}`;
+      partnerId = new URLSearchParams(window.location.search).get("partner") || "";
+    } catch { partnerId = ""; }
+    if (!partnerId) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${PARTNER_CONFIG_URL}?${queryStr}`);
+        const res = await fetch(`${PARTNER_CONFIG_URL}?partner=${encodeURIComponent(partnerId)}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data && data.found) setPartner(data);
@@ -170,18 +165,18 @@ export default function DigestSignup() {
   // Client-side email validation — mirrors server layers 1-3 (format, disposable, typo)
   // Layer 4 (MX check) happens server-side on submit.
   const DISPOSABLE_DOMAINS = [
-    "mailinator.com", "guerrillamail.com", "guerrillamail.net", "10minutemail.com",
-    "temp-mail.org", "tempmail.com", "throwawaymail.com", "yopmail.com", "getnada.com",
-    "trashmail.com", "sharklasers.com", "grr.la", "maildrop.cc", "dispostable.com",
-    "fakeinbox.com", "mailnesia.com", "mintemail.com", "spamgourmet.com", "mohmal.com",
+    "mailinator.com","guerrillamail.com","guerrillamail.net","10minutemail.com",
+    "temp-mail.org","tempmail.com","throwawaymail.com","yopmail.com","getnada.com",
+    "trashmail.com","sharklasers.com","grr.la","maildrop.cc","dispostable.com",
+    "fakeinbox.com","mailnesia.com","mintemail.com","spamgourmet.com","mohmal.com",
   ];
   const TYPO_DOMAINS = {
-    "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gmal.com": "gmail.com",
-    "gmail.co": "gmail.com", "gmaill.com": "gmail.com", "gnail.com": "gmail.com",
-    "yahooo.com": "yahoo.com", "yaho.com": "yahoo.com", "yahoo.co": "yahoo.com",
-    "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com", "hotmil.com": "hotmail.com",
-    "outlok.com": "outlook.com", "outloo.com": "outlook.com", "iclould.com": "icloud.com",
-    "icloud.co": "icloud.com",
+    "gmial.com":"gmail.com","gmai.com":"gmail.com","gmal.com":"gmail.com",
+    "gmail.co":"gmail.com","gmaill.com":"gmail.com","gnail.com":"gmail.com",
+    "yahooo.com":"yahoo.com","yaho.com":"yahoo.com","yahoo.co":"yahoo.com",
+    "hotmial.com":"hotmail.com","hotmai.com":"hotmail.com","hotmil.com":"hotmail.com",
+    "outlok.com":"outlook.com","outloo.com":"outlook.com","iclould.com":"icloud.com",
+    "icloud.co":"icloud.com",
   };
 
   const checkEmail = (value) => {
@@ -230,8 +225,7 @@ export default function DigestSignup() {
       role: form.role,
       roleOther: form.roleOther,
       phone: form.phone,
-      partnerId: partner ? (partner.partnerId || "") : "",
-      loId: partner ? (partner.loId || "") : "",
+      partnerId: partner ? partner.partnerId : "",
     };
     try {
       const res = await fetch(WEBHOOK_URL, {
@@ -270,7 +264,7 @@ export default function DigestSignup() {
         <div style={{ maxWidth: "860px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: "0 0 1px", fontSize: "9px", fontWeight: "700", color: accent, letterSpacing: "0.14em", textTransform: "uppercase" }}>JWH Financial · Daily Briefing</p>
-            <h1 style={{ margin: 0, fontSize: "19px", fontWeight: "800", color: "white", letterSpacing: "-0.02em" }}>Mortgage &amp; Real Estate Digest</h1>
+            <h1 style={{ margin: 0, fontSize: "19px", fontWeight: "800", color: "white", letterSpacing: "-0.02em" }}>Mortgage Digest</h1>
           </div>
           <div style={{ width: "38px", height: "38px", background: B.blue, borderRadius: "9px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "19px" }}>🏠</div>
         </div>
@@ -293,17 +287,6 @@ export default function DigestSignup() {
         </div>
       )}
 
-      {/* LO-ONLY BAR (no partner, but a named loan officer) */}
-      {partner && !partner.partnerName && partner.loName && (
-        <div style={{ background: "#FFFFFF", borderBottom: `2px solid ${accent}`, padding: "12px 24px" }}>
-          <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
-            <span style={{ fontSize: "12px", color: B.muted }}>
-              {`Your loan officer: `}<strong style={{ color: B.navy }}>{partner.loName}</strong>{` · JWH Financial`}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* HERO + FORM SECTION */}
       <div style={{ background: B.pageBg, padding: isMobile ? "28px 16px 24px" : "40px 24px 32px" }}>
         <div style={{ maxWidth: "860px", margin: "0 auto", animation: "fadeUp 0.45s ease both" }}>
@@ -315,7 +298,7 @@ export default function DigestSignup() {
               <span style={{ fontSize: "12px", fontWeight: "600", color: B.muted }}>{`Delivered every weekday at ${deliveryTime}`}</span>
             </div>
             <h2 style={{ margin: "0 0 10px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: "800", color: B.navy, letterSpacing: "-0.03em", lineHeight: "1.1" }}>
-              The mortgage &amp; real estate market<br />
+              The mortgage market<br />
               <span style={{ color: B.blue }}>summarized before breakfast.</span>
             </h2>
             <p style={{ margin: "0 auto 24px", maxWidth: "460px", fontSize: "16px", color: B.muted, lineHeight: "1.7" }}>
@@ -436,13 +419,13 @@ export default function DigestSignup() {
 
             {/* Email footer */}
             <div style={{ background: B.navy, padding: "18px 28px", textAlign: "center" }}>
-              <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage &amp; Real Estate Digest</p>
+              <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage Digest</p>
               <p style={{ margin: "0 0 10px", fontSize: "10px", color: B.light, fontFamily: "'Courier New', monospace" }}>mortgage-digest@jwhfinance.com</p>
               <p style={{ margin: "0 0 8px", fontSize: "10px", color: "#374151", lineHeight: "1.7" }}>
                 HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA<br />
                 NAR · Inman · Zillow · Redfin · NAHB · CoStar · BLS · Census · Conference Board · Bloomberg RE · WSJ Housing
               </p>
-              <button onClick={() => { }} style={{ fontSize: "11px", color: B.light, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unsubscribe</button>
+              <button onClick={() => {}} style={{ fontSize: "11px", color: B.light, textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Unsubscribe</button>
             </div>
             <div style={{ height: "4px", background: B.blue }} />
           </div>

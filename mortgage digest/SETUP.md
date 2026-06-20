@@ -1,235 +1,93 @@
-# Mortgage Digest — Setup Guide
+# Mortgage Digest System — Setup & Reference
 
-Complete setup takes about 45–60 minutes. Follow steps in order.
+Automated daily mortgage & real estate news digest for JWH Financial. Sends a curated email every weekday morning to subscribers, plus an immediate digest to new signups.
 
----
+## Architecture
 
-## What You're Building
+- **Gemini 2.5 Pro** (Google Search grounding) generates the digest content
+- **n8n** orchestrates everything (instance: `jwhfinancial.app.n8n.cloud`, timezone: PT)
+- **Google Sheets** stores subscribers + digest archive
+- **Gmail** (OAuth2) sends from `mortgage-digest@jwhfinance.com`, display name "Mortgage Digest | JWH Financial"
+- **React signup page** on Vercel via GitHub repo `nobodyrandomly/mortgage-digest-signup` (live at `mortgage-digest-signup.vercel.app`)
 
-- **Landing page** (digest-signup.jsx) — hosted on Vercel, collects subscriber info
-- **n8n workflow** — runs daily at 6 AM Eastern, generates digest via Gemini, emails all subscribers
-- **Google Sheet** — stores and manages your subscriber list
-- **Gmail send-as alias** — emails go out from mortgage-digest@jwhfinance.com
+## Key IDs & URLs
 
----
+- Google Sheet ID: `1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0`
+- Tabs: `Subscribers`, `Digest`
+- Signup webhook (prod): `https://jwhfinancial.app.n8n.cloud/webhook/digest-signup`
+- Unsubscribe webhook (prod): `https://jwhfinancial.app.n8n.cloud/webhook/digest-unsubscribe`
+- Sender: `mortgage-digest@jwhfinance.com` / "Mortgage Digest | JWH Financial"
 
-## Step 1 — Create Your Google Sheet
+> Production webhooks use `/webhook/`. The `/webhook-test/` URLs only work in the n8n editor's test mode.
 
-1. Go to [sheets.google.com](https://sheets.google.com) and create a new spreadsheet
-2. Name it: **Mortgage Digest Subscribers**
-3. Rename the default sheet tab to: **Subscribers**
-4. Add these exact headers in Row 1 (one per column, no spaces):
+## Workflows
 
-```
-email | firstName | lastName | fullName | company | role | roleOther | phone | subscribedAt | active | send_count | last_sent_at | unsubscribedAt | source
-```
+The system can run as one combined workflow OR split into independent workflows. Current files support both:
 
-5. Copy the Sheet ID from the URL bar:
-   - URL looks like: `https://docs.google.com/spreadsheets/d/SHEET_ID_HERE/edit`
-   - Copy the long string between `/d/` and `/edit`
-   - You'll paste this into the n8n workflow in Step 4
+- **workflow-A-generator.json** — runs 5:30 AM, generates digest, saves to Digest tab, terminates
+- **workflow-B-sender.json** — runs 6:00 AM, pulls saved digest, sends to subscribers; also holds signup + unsubscribe flows
+- **workflow-C-bounce-handler.json** — Gmail Trigger watches for bounce notifications, marks permanent bounces inactive
+- **mortgage-digest-n8n-workflow.json** — the original combined single-workflow version (all flows in one)
 
-> Adding new columns later is safe — the workflow reads and writes by header name, not column position.
+### Daily generation (Workflow A)
+`5:30 AM → Generate via Gemini → Parse & Validate → Validate & Fix Links → Plagiarism Check → Rewrite Agent → Build HTML Email → Save Digest to Sheet`
 
----
+### Daily send (Workflow B)
+`6 AM → Fetch Today's Digest → Get Today's Digest → Fetch Active Subscribers → Split → (loop) Send via Gmail → Log Send → back to Split`
 
-## Step 2 — Set Up Gmail Send-As Alias
+### Signup (Workflow B)
+`Signup Webhook → Validate Signup → Valid? → (true) Save to Sheet → Welcome Email → Fetch Latest Digest → Get Most Recent → Has Digest? → Send Latest Digest`
+Valid? false branch → Webhook Response (error).
 
-1. Open Gmail with the account you'll use to send the digest
-2. Click the gear icon → **See all settings**
-3. Go to the **Accounts and Import** tab
-4. Under **Send mail as**, click **Add another email address**
-5. Name: `Mortgage Digest | JWH Finance`
-6. Email: `mortgage-digest@jwhfinance.com`
-7. Uncheck "Treat as an alias" if you want replies to go to that address
-8. Click **Next Step** → **Send Verification**
-9. Check the inbox for mortgage-digest@jwhfinance.com and click the verification link
-10. Once verified, it appears in your Send mail as list
+### Unsubscribe (Workflow B)
+`Unsubscribe Webhook → Mark Unsubscribed in Sheet → Confirmation Page`
 
-> You must complete verification before the workflow can send from this address.
+### Bounce handling (Workflow C)
+`Gmail Trigger → Extract Bounced Addresses → Mark Subscriber Bounced`
 
----
+## Google Sheet Schema
 
-## Step 3 — Get Your API Keys
+**Subscribers tab headers:**
+`email, firstName, lastName, fullName, company, role, roleOther, phone, subscribedAt, active, send_count, last_sent_at, bounced, bouncedAt, unsubscribedAt, source`
 
-### Google Gemini API Key
-1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Click **Create API Key**
-3. Copy and save it — you'll use it in n8n
+**Digest tab headers:**
+`timestamp, subject, html`
 
-### Google Sheets OAuth2 (for n8n)
-This is handled via n8n's built-in Google Sheets credential (OAuth2 flow — no manual key needed). You authorize it in Step 4.
+All Sheets nodes reference columns by header name, so columns can be added without breaking anything.
 
----
+## n8n Credentials Required
 
-## Step 4 — Set Up n8n
+- **Google Gemini API Key** — Query Auth, Name field exactly `key`
+- **Google Sheets (Digest)** — OAuth2
+- **Gmail (Digest Sender)** — OAuth2, with `mortgage-digest@jwhfinance.com` verified under "Send mail as"
 
-### 4a. Create Credentials
+## Code Files (paste into corresponding n8n nodes)
 
-In n8n go to **Settings → Credentials → Add Credential**:
+- `gemini-node-body-v3.json` → Generate Digest via Gemini (full JSON body)
+- `parse-digest-code.js` → Parse & Validate Digest
+- `validate-links-code.js` → Validate & Fix Story Links
+- `plagiarism-check-code.js` → Plagiarism Check
+- `rewrite-agent-code.js` → Rewrite Agent
+- `build-email-code.js` → Build HTML Email
+- `validate-signup-code.js` → Validate Signup
+- `bounce-extract-code.js` → Extract Bounced Addresses
+- `welcome-email-expression.txt` → Send Welcome Email (Message field)
+- `digest-signup.jsx` → signup page src/App.js (Vercel)
 
-**Credential 1 — Gemini API**
-- Type: `HTTP Query Auth`
-- Name: `Google Gemini API Key`
-- Name field: `key`
-- Value field: your Gemini API key from Step 3
+## Key Implementation Notes
 
-**Credential 2 — Google Sheets**
-- Type: `Google Sheets OAuth2 API`
-- Name: `Google Sheets (Digest)`
-- Click Connect and authorize with your Google account (same one that owns the Sheet)
+- **Gemini node:** raw JSON body mode; `responseMimeType` omitted (incompatible with Google Search grounding); 300000ms timeout + retry; prompt ends with "Output ONLY the JSON object" instruction
+- **Parse node:** extracts JSON from Gemini's multi-part responses (reasoning text + JSON) via ```json fence → any fence → first-brace-to-last-brace
+- **Code nodes calling Gemini** (Validate Links, Rewrite Agent): use `{{ $credentials.googleGeminiApi.apiKey }}` expression syntax, not `$credentials` directly
+- **Email validation (Validate Signup):** 4 layers — strict format, disposable domain block, typo detection, MX record check via `this.helpers.httpRequest` to Google DNS. NXDOMAIN and no-MX domains rejected; genuine lookup errors fail open
+- **Valid? IF node:** condition `{{ $json.valid }}` is true, with "Convert types where required" ON
+- **Save to Google Sheet:** appendOrUpdate on `email` to prevent duplicate subscribers and re-activate resubscribers
+- **Bounce handler:** only acts on PERMANENT failures (5.x.x status or "address not found" language); soft bounces (4.x.x) ignored
+- **Signup page:** Option D layout — hero + centered form above, full-width preview below. Email field centered on top, then Full Name | Role, then Phone | Company. Full name split into first/last on submit. Timezone-aware delivery time via Intl API (America/Los_Angeles), D/S stripped from abbreviations (PDT→PT etc.)
+- **JSX gotchas (caused repeated Vercel build failures):** no `<a href="#">` (use button); no escaped apostrophes inside template literals (use curly '); wrap dynamic values in JSX expressions not raw text; always do a FULL replace of src/App.js, never partial
 
-**Credential 3 — Gmail**
-- Type: `Gmail OAuth2`
-- Name: `Gmail (Digest Sender)`
-- Click Connect and authorize with the Gmail account you set up the send-as alias on
+## Legal / Copyright
 
-### 4b. Import the Workflow
-
-1. In n8n go to **Workflows → Add Workflow → Import from File**
-2. Upload `mortgage-digest-n8n-workflow.json`
-3. The workflow opens with all nodes visible
-
-### 4c. Plug In Your Sheet ID
-
-Search for `YOUR_GOOGLE_SHEET_ID` across these four nodes and replace with your actual Sheet ID from Step 1:
-- **Fetch Active Subscribers**
-- **Save to Google Sheet**
-- **Log Send to Sheet**
-- **Mark Unsubscribed in Sheet**
-
-### 4d. Get Your Webhook URLs
-
-1. Click the **Signup Webhook** node → copy the Production URL
-   - Looks like: `https://your-n8n.com/webhook/digest-signup`
-   - Save this — you'll paste it into the landing page in Step 6
-
-2. Click the **Unsubscribe Webhook** node → copy the Production URL
-   - Looks like: `https://your-n8n.com/webhook/digest-unsubscribe`
-
-3. Open the **Build HTML Email** node (Code node) and find this line near the top:
-   ```
-   const UNSUBSCRIBE_WEBHOOK = 'https://YOUR-N8N-INSTANCE/webhook/digest-unsubscribe';
-   ```
-   Replace with your actual unsubscribe webhook URL.
-
-### 4e. Activate the Workflow
-
-Toggle the workflow to **Active** in the top right. The cron will now fire at 10:00 UTC (6 AM Eastern) every weekday.
-
----
-
-## Step 5 — Test the Workflow
-
-Before going live, run a manual test:
-
-1. Add your own email as a row in the Google Sheet:
-   - Set `active` = `TRUE`, `send_count` = `0`
-   - Fill in firstName, lastName, email
-
-2. In n8n, open the workflow and click **Test Workflow**
-
-3. Check that:
-   - Gemini generates a digest (Parse node outputs valid JSON with stories)
-   - Gmail sends the email to your address
-   - The Sheet's `last_sent_at` and `send_count` update
-   - The email arrives from `mortgage-digest@jwhfinance.com` with subject and formatting intact
-
-4. Test the unsubscribe link at the bottom of the email — it should open a confirmation page and set your row's `active` to `FALSE`
-
----
-
-## Step 6 — Deploy the Landing Page
-
-### 6a. Update the Webhook URL
-
-Open `digest-signup.jsx` and find line 5:
-```js
-const WEBHOOK_URL = "https://YOUR-N8N-INSTANCE/webhook/digest-signup";
-```
-Replace with your actual signup webhook URL from Step 4d.
-
-### 6b. Deploy to Vercel (Recommended)
-
-**Option A — GitHub (easiest long-term)**
-1. Create a new GitHub repo and push `digest-signup.jsx`
-2. Go to [vercel.com](https://vercel.com) → New Project → Import your repo
-3. Vercel auto-detects React. Set framework to **Vite** or **Create React App**
-4. Click Deploy
-5. Your page is live at `your-project.vercel.app`
-
-**Option B — Vercel CLI (fastest)**
-```bash
-npm install -g vercel
-npx create-react-app mortgage-digest
-# Replace src/App.js contents with digest-signup.jsx contents
-cd mortgage-digest
-vercel deploy
-```
-
-**Option C — Netlify Drop**
-1. Wrap the component in a standard React app (`create-react-app`)
-2. Run `npm run build`
-3. Drag the `/build` folder to [app.netlify.com/drop](https://app.netlify.com/drop)
-4. Live instantly
-
-### 6c. Custom Domain (Optional)
-
-In Vercel/Netlify, go to Domain Settings and add your domain (e.g. `digest.jwhfinance.com`). Update DNS records as instructed.
-
----
-
-## Step 7 — Add the Sheet to Your Bookmark Bar
-
-The Google Sheet is your subscriber dashboard. You can:
-- See everyone who signed up (name, email, company, role, phone)
-- Manually add subscribers by adding rows
-- Unsubscribe someone manually by setting `active` = `FALSE`
-- Filter by role (loan officer, broker, etc.) for marketing analysis
-- Export to CSV anytime
-
----
-
-## Timezone Reference
-
-| Cron | UTC | Eastern | Central | Pacific |
-|------|-----|---------|---------|---------|
-| `0 10 * * 1-5` | 10:00 AM | 6:00 AM | 5:00 AM | 3:00 AM |
-| `0 11 * * 1-5` | 11:00 AM | 7:00 AM | 6:00 AM | 4:00 AM |
-| `0 12 * * 1-5` | 12:00 PM | 8:00 AM | 7:00 AM | 5:00 AM |
-
-Edit the cron expression in the **6 AM Daily** trigger node to change delivery time.
-
----
-
-## Troubleshooting
-
-**Gemini returns no content**
-- Check your API key in the `Google Gemini API Key` credential
-- Verify the key is active at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-
-**Emails not sending from mortgage-digest@jwhfinance.com**
-- Confirm the send-as alias is verified in Gmail settings
-- In the **Send via Gmail** node options, add `fromEmail: mortgage-digest@jwhfinance.com`
-
-**Sheet not updating**
-- Re-authorize the `Google Sheets (Digest)` credential in n8n
-- Confirm the Sheet ID is correct and the tab is named exactly `Subscribers`
-
-**Signup form not working**
-- Confirm the `WEBHOOK_URL` in `digest-signup.jsx` points to the live n8n webhook (not test URL)
-- Make sure the workflow is Active, not just saved
-
-**Unsubscribe link doesn't work**
-- Confirm you updated the `UNSUBSCRIBE_WEBHOOK` constant in the Build HTML Email node
-- The webhook uses GET method so clicking the link works directly in a browser
-
----
-
-## Files Reference
-
-| File | Purpose |
-|------|---------|
-| `mortgage-digest-n8n-workflow.json` | Import into n8n |
-| `digest-signup.jsx` | Deploy to Vercel/Netlify |
-| `SETUP.md` | This guide |
+- Email footer includes: "Summaries are independently generated. All rights belong to original publishers."
+- Gemini prompt forbids verbatim quotes from sources
+- Plagiarism check compares summaries/keyPoints/effects (NOT headlines) against open-access sources for 8+ word matches; flagged stories rewritten before send

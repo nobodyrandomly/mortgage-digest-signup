@@ -12,6 +12,7 @@ const useWindowWidth = () => {
 };
 
 const WEBHOOK_URL = "https://jwhfinancial.app.n8n.cloud/webhook/digest-signup";
+const PARTNER_CONFIG_URL = "https://jwhfinancial.app.n8n.cloud/webhook/partner-config";
 
 const ROLES = [
   { value: "", label: "Select your role…" },
@@ -130,6 +131,37 @@ export default function DigestSignup() {
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
 
+  // Partner co-branding — read ?partner= from URL, fetch config, render branded.
+  // Renders instantly with JWH defaults; partner branding applies when config arrives.
+  const [partner, setPartner] = useState(null);
+  useEffect(() => {
+    let partnerId = "", loId = "";
+    try {
+      const params = new URLSearchParams(window.location.search);
+      partnerId = params.get("partner") || "";
+      loId = params.get("lo") || "";
+    } catch { partnerId = ""; loId = ""; }
+    if (!partnerId && !loId) return;
+    const queryStr = partnerId
+      ? `partner=${encodeURIComponent(partnerId)}`
+      : `lo=${encodeURIComponent(loId)}`;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${PARTNER_CONFIG_URL}?${queryStr}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data && data.found) setPartner(data);
+      } catch {
+        // Silent fail — page stays on default JWH branding
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Accent color: partner's brand color if present, else JWH blue
+  const accent = (partner && partner.partnerColor) ? partner.partnerColor : B.blue;
+
   const set = (field) => (e) => {
     setForm(f => ({ ...f, [field]: e.target.value }));
     setErrors(p => ({ ...p, [field]: null }));
@@ -198,6 +230,8 @@ export default function DigestSignup() {
       role: form.role,
       roleOther: form.roleOther,
       phone: form.phone,
+      partnerId: partner ? (partner.partnerId || "") : "",
+      loId: partner ? (partner.loId || "") : "",
     };
     try {
       const res = await fetch(WEBHOOK_URL, {
@@ -235,12 +269,40 @@ export default function DigestSignup() {
       <div style={{ background: B.navy, padding: "16px 24px" }}>
         <div style={{ maxWidth: "860px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ margin: "0 0 1px", fontSize: "9px", fontWeight: "700", color: B.blue, letterSpacing: "0.14em", textTransform: "uppercase" }}>JWH Financial · Daily Briefing</p>
-            <h1 style={{ margin: 0, fontSize: "19px", fontWeight: "800", color: "white", letterSpacing: "-0.02em" }}>Mortgage Digest</h1>
+            <p style={{ margin: "0 0 1px", fontSize: "9px", fontWeight: "700", color: accent, letterSpacing: "0.14em", textTransform: "uppercase" }}>JWH Financial · Daily Briefing</p>
+            <h1 style={{ margin: 0, fontSize: "19px", fontWeight: "800", color: "white", letterSpacing: "-0.02em" }}>Mortgage &amp; Real Estate Digest</h1>
           </div>
           <div style={{ width: "38px", height: "38px", background: B.blue, borderRadius: "9px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "19px" }}>🏠</div>
         </div>
       </div>
+
+      {/* PARTNER CO-BRAND BAR */}
+      {partner && partner.partnerName && (
+        <div style={{ background: "#FFFFFF", borderBottom: `2px solid ${accent}`, padding: "12px 24px" }}>
+          <div style={{ maxWidth: "860px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {partner.partnerLogo
+                ? <img src={partner.partnerLogo} alt={partner.partnerName} style={{ maxHeight: "32px", display: "block" }} />
+                : <span style={{ fontSize: "16px", fontWeight: "800", color: accent, letterSpacing: "-0.01em" }}>{partner.partnerName}</span>}
+            </div>
+            <span style={{ fontSize: "11px", color: B.muted, textAlign: "right" }}>
+              {`In partnership with `}<strong style={{ color: B.navy }}>{partner.partnerName}</strong>
+              {partner.loName ? ` & ${partner.loName}` : ""}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* LO-ONLY BAR (no partner, but a named loan officer) */}
+      {partner && !partner.partnerName && partner.loName && (
+        <div style={{ background: "#FFFFFF", borderBottom: `2px solid ${accent}`, padding: "12px 24px" }}>
+          <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
+            <span style={{ fontSize: "12px", color: B.muted }}>
+              {`Your loan officer: `}<strong style={{ color: B.navy }}>{partner.loName}</strong>{` · JWH Financial`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* HERO + FORM SECTION */}
       <div style={{ background: B.pageBg, padding: isMobile ? "28px 16px 24px" : "40px 24px 32px" }}>
@@ -253,7 +315,7 @@ export default function DigestSignup() {
               <span style={{ fontSize: "12px", fontWeight: "600", color: B.muted }}>{`Delivered every weekday at ${deliveryTime}`}</span>
             </div>
             <h2 style={{ margin: "0 0 10px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: "800", color: B.navy, letterSpacing: "-0.03em", lineHeight: "1.1" }}>
-              The mortgage market<br />
+              The mortgage &amp; real estate market<br />
               <span style={{ color: B.blue }}>summarized before breakfast.</span>
             </h2>
             <p style={{ margin: "0 auto 24px", maxWidth: "460px", fontSize: "16px", color: B.muted, lineHeight: "1.7" }}>
@@ -327,7 +389,7 @@ export default function DigestSignup() {
                 <button
                   onClick={handleSubmit}
                   disabled={status === "loading"}
-                  style={{ width: "100%", padding: isMobile ? "16px 20px" : "14px 20px", background: status === "loading" ? B.light : B.blue, color: "white", border: "none", borderRadius: "9px", fontSize: "15px", fontWeight: "700", cursor: status === "loading" ? "not-allowed" : "pointer", letterSpacing: "0.01em" }}
+                  style={{ width: "100%", padding: isMobile ? "16px 20px" : "14px 20px", background: status === "loading" ? B.light : accent, color: "white", border: "none", borderRadius: "9px", fontSize: "15px", fontWeight: "700", cursor: status === "loading" ? "not-allowed" : "pointer", letterSpacing: "0.01em" }}
                 >
                   {status === "loading" ? "subscribing…" : "subscribe free"}
                 </button>
@@ -374,7 +436,7 @@ export default function DigestSignup() {
 
             {/* Email footer */}
             <div style={{ background: B.navy, padding: "18px 28px", textAlign: "center" }}>
-              <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage Digest</p>
+              <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: "700", color: "white" }}>JWH Financial · Mortgage &amp; Real Estate Digest</p>
               <p style={{ margin: "0 0 10px", fontSize: "10px", color: B.light, fontFamily: "'Courier New', monospace" }}>mortgage-digest@jwhfinance.com</p>
               <p style={{ margin: "0 0 8px", fontSize: "10px", color: "#374151", lineHeight: "1.7" }}>
                 HousingWire · MND · MBS Live · NMP · Fed · CFPB · Freddie Mac · Fannie Mae · MBA<br />
