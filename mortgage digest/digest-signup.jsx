@@ -149,8 +149,24 @@ export default function DigestSignup() {
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setStatus("loading");
-    try { await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); } catch {}
-    setStatus("success");
+    setErrors({});
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        setStatus("success");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setErrors({ submit: data.error || data.message || "Something went wrong. Please try again." });
+        setStatus("idle");
+      }
+    } catch {
+      setErrors({ submit: "Couldn't reach the server. Please check your connection and try again." });
+      setStatus("idle");
+    }
   };
 
   return (
@@ -260,6 +276,12 @@ export default function DigestSignup() {
                     <input type="text" value={form.company} onChange={set("company")} placeholder="Company" style={inpSmall} />
                   </div>
                 </div>
+
+                {errors.submit && (
+                  <div style={{ marginBottom: "12px", padding: "10px 14px", background: "#FEF2F2", border: `1px solid #FECACA`, borderRadius: "8px" }}>
+                    <p style={{ margin: 0, fontSize: "12px", color: B.red, lineHeight: "1.5" }}>{errors.submit}</p>
+                  </div>
+                )}
 
                 <button
                   onClick={handleSubmit}

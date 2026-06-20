@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 14 * * 1-5"
+              "expression": "0 6 * * 1-5"
             }
           ]
         }
@@ -20,7 +20,7 @@
         240,
         300
       ],
-      "notes": "Runs at 14:00 UTC = 6:00 AM Pacific, weekdays only. For 7 days use: 0 14 * * *. Other timezones: 0 15 = 7AM PT/10AM ET, 0 16 = 8AM PT/11AM ET."
+      "notes": "Runs at 6:00 AM Pacific time (n8n instance timezone set to PT). Weekdays only. For 7 days use: 0 6 * * *."
     },
     {
       "parameters": {
@@ -58,7 +58,7 @@
           "name": "Google Sheets (Digest)"
         }
       },
-      "notes": "Replace YOUR_GOOGLE_SHEET_ID with your actual Sheet ID from the URL. Reads by header name 'active' = TRUE so adding new columns never breaks this node."
+      "notes": "Reads all rows where active=TRUE from the Subscribers tab. References columns by header name so adding columns never breaks this node."
     },
     {
       "parameters": {
@@ -231,7 +231,7 @@
           "name": "Gmail (Digest Sender)"
         }
       },
-      "notes": "Sends from the Gmail account authorized via OAuth2. To send FROM mortgage-digest@jwhfinance.com, first add it as a 'Send mail as' alias in Gmail Settings \u2192 Accounts and Import, verify it, then add 'fromEmail: mortgage-digest@jwhfinance.com' to the options above. The senderName shows 'Mortgage Digest | JWH Finance' in the inbox."
+      "notes": "Sends from the Gmail account authorized via OAuth2. To send FROM mortgage-digest@jwhfinance.com, first add it as a 'Send mail as' alias in Gmail Settings \u2192 Accounts and Import, verify it, then add 'fromEmail: mortgage-digest@jwhfinance.com' to the options above. The senderName shows 'Mortgage Digest | JWH Financial' in the inbox."
     },
     {
       "parameters": {
@@ -317,17 +317,19 @@
       "parameters": {
         "conditions": {
           "options": {
-            "caseSensitive": false,
+            "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
+              "id": "valid-check",
               "leftValue": "={{ $json.valid }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
-                "operation": "equal"
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -342,7 +344,8 @@
       "position": [
         680,
         580
-      ]
+      ],
+      "notes": "Routes valid signups (valid=true) to TRUE branch \u2192 Save to Google Sheet. Condition: {{ $json.valid }} is true (boolean, loose validation). TRUE \u2192 Save to Sheet. FALSE \u2192 Webhook Response (error)."
     },
     {
       "parameters": {
@@ -400,7 +403,7 @@
         "sendTo": "={{ $('Validate Signup').item.json.email }}",
         "subject": "Welcome to the Daily Mortgage Digest",
         "emailType": "html",
-        "message": "={{ '<!DOCTYPE html><html><body style=\"margin:0;padding:0;background:#080e17;font-family:-apple-system,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:40px 20px;\"><table width=\"540\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:540px;\"><tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-bottom:3px solid #c9a84c;border-radius:8px 8px 0 0;padding:28px;\"><p style=\"margin:0 0 4px;font-size:10px;font-family:Courier New,monospace;color:#c9a84c;letter-spacing:0.14em;\">DAILY BRIEFING</p><h1 style=\"margin:0;font-size:22px;font-weight:800;color:white;\">Mortgage &amp; Real Estate Digest</h1></td></tr><tr><td style=\"background:#0d1520;border:1px solid #1e293b;border-top:none;padding:28px;\"><p style=\"margin:0 0 16px;font-size:15px;color:#e2e8f0;\">Hi ' + $('Validate Signup').item.json.firstName + ', you&#39;re in.</p><p style=\"margin:0 0 16px;font-size:13px;color:#94a3b8;line-height:1.7;\">Your first Daily Mortgage &amp; Real Estate Digest arrives tomorrow morning at 6 AM Eastern. Every weekday you&#39;ll get:</p><ul style=\"margin:0 0 20px;padding-left:18px;\"><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Current mortgage rates &amp; MBS pricing</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Top 6\u201310 stories from 12 industry sources</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">Fed &amp; regulatory updates</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">First &amp; second order effects analysis</li><li style=\"font-size:13px;color:#94a3b8;line-height:1.9;\">What to watch for the day</li></ul></td></tr><tr><td style=\"background:#0a0f1a;border:1px solid #1e293b;border-top:none;border-radius:0 0 8px 8px;padding:16px 28px;text-align:center;\"><p style=\"margin:0 0 4px;font-size:11px;color:#e2e8f0;font-weight:600;\">Mortgage Digest \u2014 JWH Financial</p><p style=\"margin:0;font-size:10px;font-family:Courier New,monospace;color:#475569;\">mortgage-digest@jwhfinance.com</p></td></tr></table></td></tr></table></body></html>' }}",
+        "message": "={{ '<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><meta name=\"color-scheme\" content=\"light\"></head><body style=\"margin:0;padding:0;background:#EEF0F5;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#EEF0F5;\"><tr><td align=\"center\" style=\"padding:20px 12px 32px;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;\"><tr><td style=\"background:#3B6FE8;height:5px;border-radius:10px 10px 0 0;font-size:0;line-height:0;\">&nbsp;</td></tr><tr><td style=\"background:#0D1321;padding:22px 24px 20px;\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><p style=\"margin:0 0 2px;font-size:9px;font-weight:700;color:#3B6FE8;letter-spacing:0.14em;text-transform:uppercase;\">JWH Financial &middot; Daily Briefing</p><p style=\"margin:0;font-size:22px;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.2;\">Mortgage &amp; Real Estate Digest</p></td><td align=\"right\" valign=\"middle\" style=\"padding-left:16px;\"><div style=\"width:44px;height:44px;background:#3B6FE8;border-radius:10px;text-align:center;line-height:44px;font-size:22px;\">&#127968;</div></td></tr></table></td></tr><tr><td style=\"background:#FFFFFF;padding:28px 24px;\"><p style=\"margin:0 0 16px;font-size:18px;font-weight:700;color:#0D1321;\">Hi ' + $('Validate Signup').item.json.firstName + ', you&#39;re in.</p><p style=\"margin:0 0 18px;font-size:14px;color:#4B5563;line-height:1.65;\">The latest digest is already on its way to your inbox. Going forward, your Daily Mortgage &amp; Real Estate Digest arrives every weekday at 6 AM Pacific. Each edition includes:</p><table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin:0 0 20px;\"><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">Current mortgage rates &amp; MBS pricing</span></td></tr><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">Top 8&ndash;12 stories from 20 industry sources</span></td></tr><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">Fed &amp; regulatory updates</span></td></tr><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">First &amp; second order effects analysis</span></td></tr><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">Dedicated insights for realtors &amp; agents</span></td></tr><tr><td style=\"padding:5px 0;\"><span style=\"color:#3B6FE8;font-weight:700;margin-right:8px;\">&middot;</span><span style=\"font-size:13px;color:#4B5563;\">What to watch for the trading day</span></td></tr></table><p style=\"margin:0;font-size:13px;color:#9CA3AF;line-height:1.6;border-top:1px solid #E2E5EC;padding-top:16px;\">Know a colleague who&#39;d find this useful? Forward them this email.</p></td></tr><tr><td style=\"background:#0D1321;padding:18px 24px;text-align:center;\"><p style=\"margin:0 0 3px;font-size:12px;font-weight:700;color:#FFFFFF;\">JWH Financial &middot; Mortgage Digest</p><p style=\"margin:0 0 10px;font-size:10px;color:#9CA3AF;font-family:Courier New,monospace;\">mortgage-digest@jwhfinance.com</p><a href=\"https://jwhfinancial.app.n8n.cloud/webhook/digest-unsubscribe?email=' + $('Validate Signup').item.json.email + '\" style=\"font-size:10px;color:#9CA3AF;text-decoration:underline;\">Unsubscribe</a></td></tr><tr><td style=\"background:#3B6FE8;height:4px;border-radius:0 0 10px 10px;font-size:0;line-height:0;\">&nbsp;</td></tr></table></td></tr></table></body></html>' }}",
         "options": {
           "senderName": "Mortgage Digest | JWH Financial",
           "replyTo": "mortgage-digest@jwhfinance.com",
@@ -508,7 +511,7 @@
     {
       "parameters": {
         "respondWith": "html",
-        "responseBody": "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Unsubscribed</title></head><body style='margin:0;padding:40px 20px;background:#080e17;font-family:-apple-system,sans-serif;text-align:center;'><div style='max-width:400px;margin:0 auto;'><span style='font-size:40px;'>\ud83d\udc4b</span><h2 style='color:white;margin:16px 0 8px;'>You've been unsubscribed.</h2><p style='color:#64748b;font-size:14px;line-height:1.6;'>You won't receive any more emails from the Mortgage Digest. If this was a mistake, visit the signup page to re-subscribe.</p><p style='margin-top:32px;font-size:11px;color:#334155;font-family:Courier New,monospace;'>Mortgage Digest \u2014 JWH Finance</p></div></body></html>",
+        "responseBody": "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Unsubscribed</title></head><body style='margin:0;padding:40px 20px;background:#080e17;font-family:-apple-system,sans-serif;text-align:center;'><div style='max-width:400px;margin:0 auto;'><span style='font-size:40px;'>\ud83d\udc4b</span><h2 style='color:white;margin:16px 0 8px;'>You've been unsubscribed.</h2><p style='color:#64748b;font-size:14px;line-height:1.6;'>You won't receive any more emails from the Mortgage Digest. If this was a mistake, visit the signup page to re-subscribe.</p><p style='margin-top:32px;font-size:11px;color:#334155;font-family:Courier New,monospace;'>Mortgage Digest \u2014 JWH Financial</p></div></body></html>",
         "options": {
           "responseCode": 200
         }
@@ -613,17 +616,19 @@
       "parameters": {
         "conditions": {
           "options": {
-            "caseSensitive": false,
+            "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
+              "id": "has-digest-check",
               "leftValue": "={{ $json.hasDigest }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
-                "operation": "equal"
+                "operation": "true",
+                "singleValue": true
               }
             }
           ],
@@ -729,14 +734,14 @@
       "main": [
         [
           {
-            "node": "Send via Gmail",
+            "node": "Save Digest to Sheet",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Save Digest to Sheet",
+            "node": "Send via Gmail",
             "type": "main",
             "index": 0
           }
