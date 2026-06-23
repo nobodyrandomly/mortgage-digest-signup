@@ -1,0 +1,177 @@
+{
+  "name": "Mortgage Digest \u2014 Bounce Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "bounce-cron",
+      "name": "Check Bounces (every 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "notes": "Runs every 6 hours to scan for bounce notifications. Adjust cron as needed: '0 */6 * * *' = every 6h, '0 8,20 * * *' = 8am & 8pm."
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 50,
+        "filters": {
+          "q": "from:(mailer-daemon@googlemail.com OR postmaster) subject:(\"Delivery Status Notification\" OR \"Undelivered\" OR \"failure\" OR \"returned\") is:unread newer_than:2d"
+        },
+        "options": {}
+      },
+      "id": "gmail-search-bounces",
+      "name": "Search Bounce Emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Searches inbox for bounce notifications from mailer-daemon/postmaster in the last 2 days that are still unread. Gmail query handles the filtering."
+    },
+    {
+      "parameters": {
+        "jsCode": "// EXTRACT BOUNCED ADDRESSES \u2014 tuned for Gmail Trigger output\n// Outputs fields named to match the Subscribers sheet headers exactly\n// (email, active, bounced, bouncedAt) so the Sheets node can Map Automatically.\n// Only acts on PERMANENT failures (5.x.x status) so temporary/soft bounces\n// (4.x.x \u2014 mailbox full, greylisting) don't remove valid subscribers.\n\nconst results = [];\n\nfor (const item of $input.all()) {\n  const msg = item.json;\n\n  // Gather all text fields the bounce body might live in\n  const haystack = [\n    msg.text || '',\n    msg.textAsHtml || '',\n    msg.html || '',\n    msg.snippet || '',\n    typeof msg.headers === 'string' ? msg.headers : JSON.stringify(msg.headers || {}),\n    msg.subject || '',\n  ].join(' ');\n\n  // \u2500\u2500 Only proceed if this is a PERMANENT failure \u2500\u2500\n  // Permanent: Status 5.x.x  |  Temporary: Status 4.x.x\n  const statusMatch = haystack.match(/Status:\\s*([45])\\.\\d+\\.\\d+/i);\n  const isPermanent = statusMatch && statusMatch[1] === '5';\n\n  // Also accept clear permanent-failure language even without a status code\n  const permanentLanguage = /(address not found|does not exist|user unknown|no such user|domain .* couldn.?t be found|NXDOMAIN|550)/i.test(haystack);\n\n  if (!isPermanent && !permanentLanguage) {\n    console.log('[BOUNCE] Skipping non-permanent or unrecognized bounce.');\n    continue;\n  }\n\n  // \u2500\u2500 Extract the failed recipient address \u2500\u2500\n  let failedEmail = null;\n\n  // Most reliable: Final-Recipient header\n  const finalRecipient = haystack.match(/Final-Recipient:\\s*rfc822;\\s*([^\\s<>\"]+@[^\\s<>\"]+)/i);\n  if (finalRecipient) failedEmail = finalRecipient[1];\n\n  // Fallback: Original-Recipient header\n  if (!failedEmail) {\n    const orig = haystack.match(/Original-Recipient:\\s*rfc822;\\s*([^\\s<>\"]+@[^\\s<>\"]+)/i);\n    if (orig) failedEmail = orig[1];\n  }\n\n  // Fallback: X-Failed-Recipients header\n  if (!failedEmail) {\n    const xfail = haystack.match(/X-Failed-Recipients:\\s*([^\\s<>\"]+@[^\\s<>\"]+)/i);\n    if (xfail) failedEmail = xfail[1];\n  }\n\n  // Fallback: a mailto: link in the bounce (Gmail includes these)\n  if (!failedEmail) {\n    const mailto = haystack.match(/mailto:([^\\s<>\"?]+@[^\\s<>\"?]+)/i);\n    if (mailto) failedEmail = mailto[1];\n  }\n\n  if (!failedEmail) {\n    console.warn('[BOUNCE] Permanent failure detected but could not extract address.');\n    continue;\n  }\n\n  // Clean and normalize\n  failedEmail = failedEmail.replace(/[.,;:>\"]+$/, '').toLowerCase().trim();\n\n  // Never act on our own sender / daemon addresses\n  if (failedEmail.includes('mortgage-digest@jwhfinance.com') ||\n      failedEmail.includes('mailer-daemon') ||\n      failedEmail.includes('postmaster') ||\n      failedEmail.includes('@googlemail.com') ||\n      failedEmail.includes('@google.com')) {\n    continue;\n  }\n\n  // Output field names MATCH the Subscribers sheet headers exactly\n  // so the Google Sheets node can Map Automatically.\n  results.push({\n    json: {\n      email: failedEmail,\n      active: \"FALSE\",\n      bounced: \"TRUE\",\n      bouncedAt: new Date().toISOString(),\n    }\n  });\n\n  console.log(`[BOUNCE] Permanent bounce for ${failedEmail} (${statusMatch ? statusMatch[0] : 'language match'})`);\n}\n\nif (results.length === 0) {\n  console.log('[BOUNCE] No permanent bounces to process.');\n  return [];\n}\n\nreturn results;\n"
+      },
+      "id": "extract-bounced",
+      "name": "Extract Bounced Addresses",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "notes": "Parses each bounce email for the failed recipient address using Final-Recipient / Original-Recipient headers and angle-bracket fallback. Skips our own sender and daemon addresses. Returns one item per bounced address; empty if none found."
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Subscribers",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.bouncedEmail }}",
+            "active": "FALSE",
+            "bounced": "TRUE",
+            "bouncedAt": "={{ $json.detectedAt }}"
+          },
+          "matchingColumns": [
+            "email"
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-bounced",
+      "name": "Mark Subscriber Bounced",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets (Digest)"
+        }
+      },
+      "notes": "Matches on email header, sets active=FALSE and bounced=TRUE with timestamp. Uses appendOrUpdate so it updates the existing subscriber row. Add 'bounced' and 'bouncedAt' columns to the Subscribers tab."
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $('Extract Bounced Addresses').item.json.messageId }}"
+      },
+      "id": "mark-read",
+      "name": "Mark Bounce as Read",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail (Digest Sender)"
+        }
+      },
+      "notes": "Marks the processed bounce notification as read so the next run's 'is:unread' filter skips it. Prevents reprocessing the same bounce."
+    }
+  ],
+  "connections": {
+    "Check Bounces (every 6h)": {
+      "main": [
+        [
+          {
+            "node": "Search Bounce Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Bounce Emails": {
+      "main": [
+        [
+          {
+            "node": "Extract Bounced Addresses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Bounced Addresses": {
+      "main": [
+        [
+          {
+            "node": "Mark Subscriber Bounced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Subscriber Bounced": {
+      "main": [
+        [
+          {
+            "node": "Mark Bounce as Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

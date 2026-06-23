@@ -1,0 +1,4 @@
+partnerId,partnerName,partnerType,partnerContact,partnerPhone,partnerEmail,partnerLogo,partnerColor,loId,active
+smith-realty,Smith Realty Group,realtor,Jane Smith,(949) 555-0101,jane@smithrealty.test,https://placehold.co/200x60/2E7D32/FFFFFF/png?text=Smith+Realty,#2E7D32,bobby-mir,TRUE
+hahn-law,Hahn Legal Partners,attorney,David Hahn,(949) 555-0202,david@hahnlaw.test,https://placehold.co/200x60/6A1B9A/FFFFFF/png?text=Hahn+Legal,#6A1B9A,bobby-mir,TRUE
+coastal-builders,Coastal Builders Inc,builder,Maria Lopez,(949) 555-0303,maria@coastalbuilders.test,https://placehold.co/200x60/C2410C/FFFFFF/png?text=Coastal+Builders,#C2410C,bobby-mir,TRUE

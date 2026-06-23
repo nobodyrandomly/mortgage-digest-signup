@@ -1,0 +1,21 @@
+// GEMINI NODE — JSON BODY FIELD
+// =====================================================
+// The JSON Body field should contain EXACTLY this single expression
+// (nothing else, no pasted JSON structure):
+//
+//   {{ $('Assemble Prompt').first().json.requestBody }}
+//
+// The Assemble Prompt code node builds the entire request body (system
+// instruction + prompt + tools + generationConfig) and JSON.stringify's it,
+// so n8n receives one already-valid, fully-escaped JSON string. This avoids
+// the "not valid JSON" error caused by multi-line/quoted prompt text being
+// merged into a JSON template.
+//
+// Node settings:
+//   Method: POST
+//   URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent
+//   Authentication: your "Google Gemini API Key" credential (Query Auth, name=key)
+//   Send Body: ON
+//   Body Content Type: JSON
+//   Specify Body: Using JSON
+//   JSON: {{ $('Assemble Prompt').first().json.requestBody }}
