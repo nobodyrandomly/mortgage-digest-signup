@@ -102,7 +102,7 @@
     },
     {
       "parameters": {
-        "operation": "append",
+        "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
           "value": "1xwXBF7mVq9hENr2B43Ig9OS6TqF1H8CoOePfe8Zo8G0",
@@ -122,7 +122,9 @@
             "subject": "=[OVERSIZE — not sent: {{ $json._htmlChars }} chars]",
             "sendStatus": "oversize"
           },
-          "matchingColumns": []
+          "matchingColumns": [
+            "rowKey"
+          ]
         },
         "options": {}
       },

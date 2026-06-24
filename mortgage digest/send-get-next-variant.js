@@ -9,7 +9,7 @@
 // Output: { _done: true } if nothing left, else the next variant row to process.
 
 const rows = $('Digests to Send').all().map(i => i.json);
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // Pacific business day (was UTC) — keeps rowKey build and send filter on the same calendar day
 
 // Skip CLAIMED variants. 'complete' = fully sent; 'oversize' = the digest blew the
 // 50k Sheets cell limit and was written as a non-sendable marker (empty html) by the

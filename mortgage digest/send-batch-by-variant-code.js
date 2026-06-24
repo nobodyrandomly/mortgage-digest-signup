@@ -42,29 +42,78 @@ for (const p of partners) if (p.partnerId) partnersById[String(p.partnerId).trim
 const losById = {};
 for (const l of los) if (l.loId) losById[String(l.loId).trim().toLowerCase()] = l;
 
-// ── co-brand renderer (once per combo) ──
+// ── partner palette engine (inlined; mirrors build-partner-palette.js) ──
+function buildPartnerPalette(input) {
+  const JWH = { C_PAGE_BG:'#EEF0F5',C_CARD_BG:'#FFFFFF',C_BORDER:'#E2E5EC',C_STRIPE:'#3B6FE8',C_HEADER_BG:'#0D1321',C_HEADER_TEXT:'#FFFFFF',C_HEADER_EYEBROW:'#3B6FE8',C_ACCENT_FILL:'#3B6FE8',C_ON_ACCENT:'#FFFFFF',C_ACCENT_INK:'#3B6FE8',C_BOX1_BG:'#EEF2FF',C_BOX1_BORDER:'#C7D2FE',C_BOX1_LABEL:'#3B6FE8',C_BOX1_SUBLABEL:'#0D1321',C_BOX2_BG:'#F0FDF4',C_BOX2_BORDER:'#BBF7D0',C_BOX2_LABEL:'#15803D',C_BOX2_TEXT:'#166534',C_TEXT_PRIMARY:'#0D1321',C_TEXT_SECONDARY:'#4B5563',C_TEXT_MUTED:'#9CA3AF',C_FOOTER_BG:'#0D1321',C_FOOTER_TEXT:'#FFFFFF' };
+  const isHex = (h) => /^#?[0-9a-f]{6}$/i.test(String(h||'').trim());
+  if (!isHex(input.primary)) return { ...JWH };
+  const norm = (h) => '#' + String(h).replace('#','').toUpperCase();
+  const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+  const toRgb = (h) => { const n = parseInt(norm(h).slice(1),16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; };
+  const toHex = ({r,g,b}) => '#'+[r,g,b].map(c=>clamp(c).toString(16).padStart(2,'0')).join('').toUpperCase();
+  const mix = (a,b,t) => { const x=toRgb(a),y=toRgb(b); return toHex({r:x.r+(y.r-x.r)*t,g:x.g+(y.g-x.g)*t,b:x.b+(y.b-x.b)*t}); };
+  const lighten = (h,t) => mix(h,'#FFFFFF',t); const darken = (h,t) => mix(h,'#000000',t);
+  const lum = (h) => { const c=toRgb(h); const f=(v)=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);}; return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b); };
+  const contrast = (a,b) => { const l1=lum(a),l2=lum(b); return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05); };
+  const bestTextOn = (bg) => contrast('#FFFFFF',bg) >= contrast('#0D1321',bg) ? '#FFFFFF' : '#0D1321';
+  const inkOnWhite = (h,r=4.5) => { let o=norm(h); for(let i=0;i<20&&contrast(o,'#FFFFFF')<r;i++)o=darken(o,0.08); return o; };
+  const toHsl = (h) => { const c=toRgb(h); const r=c.r/255,g=c.g/255,b=c.b/255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b); let hh=0,s=0,l=(mx+mn)/2; if(mx!==mn){const d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn); if(mx===r)hh=(g-b)/d+(g<b?6:0); else if(mx===g)hh=(b-r)/d+2; else hh=(r-g)/d+4; hh/=6;} return {h:hh*360,s,l}; };
+  const fromHsl = ({h,s,l}) => { h=(((h%360)+360)%360)/360; const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;}; let r,g,b; if(s===0){r=g=b=l;}else{const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=f(p,q,h+1/3);g=f(p,q,h);b=f(p,q,h-1/3);} return toHex({r:r*255,g:g*255,b:b*255}); };
+  const brandDark = (h) => { const hsl=toHsl(h); hsl.s=Math.max(hsl.s,0.45); hsl.l=0.27; let o=fromHsl(hsl); for(let i=0;i<12&&contrast('#FFFFFF',o)<4.8;i++){hsl.l=Math.max(0.10,hsl.l-0.03);o=fromHsl(hsl);} return o; };
+  const deriveSecondary = (h) => { const hsl=toHsl(h); hsl.h=hsl.h+90; hsl.s=Math.max(hsl.s,0.42); hsl.l=Math.min(0.52,Math.max(0.40,hsl.l)); return fromHsl(hsl); };
+  const toLightOnDark = (h,bg,r=4.0) => { let o=lighten(h,0.35); for(let i=0;i<20&&contrast(o,bg)<r;i++)o=lighten(o,0.10); return o; };
+
+  const P = norm(input.primary);
+  let box2;
+  if (isHex(input.secondary)) { const sec=norm(input.secondary); let dh=Math.abs(toHsl(sec).h-toHsl(P).h); if(dh>180)dh=360-dh; box2 = dh>=30 ? sec : deriveSecondary(P); }
+  else box2 = deriveSecondary(P);
+  const headerBg = brandDark(P), accentInk = inkOnWhite(P), secInk = inkOnWhite(box2);
+  return {
+    C_PAGE_BG: mix('#EEF0F5',P,0.06), C_CARD_BG:'#FFFFFF', C_BORDER: mix('#E2E5EC',P,0.10),
+    C_STRIPE: P, C_HEADER_BG: headerBg, C_HEADER_TEXT:'#FFFFFF', C_HEADER_EYEBROW: toLightOnDark(P,headerBg),
+    C_ACCENT_FILL: P, C_ON_ACCENT: bestTextOn(P), C_ACCENT_INK: accentInk,
+    C_BOX1_BG: lighten(P,0.90), C_BOX1_BORDER: lighten(P,0.62), C_BOX1_LABEL: accentInk, C_BOX1_SUBLABEL: darken(accentInk,0.15),
+    C_BOX2_BG: lighten(box2,0.90), C_BOX2_BORDER: lighten(box2,0.60), C_BOX2_LABEL: secInk, C_BOX2_TEXT: darken(secInk,0.10),
+    C_TEXT_PRIMARY:'#0D1321', C_TEXT_SECONDARY:'#4B5563', C_TEXT_MUTED:'#9CA3AF',
+    C_FOOTER_BG: headerBg, C_FOOTER_TEXT:'#FFFFFF',
+  };
+}
+
+// ── co-brand renderer (once per combo): resolve theme tokens + header + footer ──
 function renderCombo(partner, lo) {
-  const accent = (partner && /^#[0-9a-fA-F]{6}$/.test(partner.partnerColor||'')) ? partner.partnerColor : B.blue;
-  let headerBlock = '';
+  const hexOk = (h) => /^#?[0-9a-fA-F]{6}$/.test(String(h||'').trim());
+  const tokens = buildPartnerPalette({
+    primary:   partner && hexOk(partner.partnerColor)  ? partner.partnerColor  : null,
+    secondary: partner && hexOk(partner.partnerColor2) ? partner.partnerColor2 : null,
+  });
+
+  let body = variant.html || '';
+
+  // 1) resolve theme tokens (general/no-partner → JWH default palette)
+  for (const k in tokens) body = body.split('{{' + k + '}}').join(tokens[k]);
+
+  // 2) brand name in the header eyebrow
+  body = body.split('{{BRAND_NAME}}').join(esc(partner && partner.partnerName ? partner.partnerName : 'JWH Financial'));
+
+  // 3) header-right: partner logo if available, else "Curated for you by"; general keeps the house tile
   if (partner && partner.partnerName) {
-    const logo = (partner.partnerLogo && /^https?:\/\//.test(partner.partnerLogo))
-      ? `<img src="${esc(partner.partnerLogo)}" alt="${esc(partner.partnerName)}" height="34" style="max-height:34px;display:block;border:0;" />`
-      : `<span style="font-size:15px;font-weight:800;color:${accent};">${esc(partner.partnerName)}</span>`;
-    headerBlock = `<tr><td style="background:#FFFFFF;padding:14px 24px;border-bottom:2px solid ${accent};"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="vertical-align:middle;">${logo}</td><td align="right" style="vertical-align:middle;font-size:10px;color:${B.muted};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Curated for you by<br><strong style="color:${B.navy};">${esc(partner.partnerName)}</strong></td></tr></table></td></tr>`;
+    const hasLogo = partner.partnerLogo && /^https?:\/\//.test(partner.partnerLogo);
+    const right = hasLogo
+      ? `<td align="right" valign="middle" style="padding-left:16px;"><img src="${esc(partner.partnerLogo)}" alt="${esc(partner.partnerName)}" height="36" style="max-height:36px;display:block;border:0;" /></td>`
+      : `<td align="right" valign="middle" style="padding-left:16px;"><p style="margin:0;font-size:10px;color:${tokens.C_HEADER_EYEBROW};line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Curated for you by<br><strong style="color:${tokens.C_HEADER_TEXT};font-size:12px;">${esc(partner.partnerName)}</strong></p></td>`;
+    body = body.replace(/<!-- HEADER_RIGHT -->[\s\S]*?<!-- \/HEADER_RIGHT -->/, '<!-- HEADER_RIGHT -->' + right + '<!-- /HEADER_RIGHT -->');
   }
+
+  // 4) footer contact block (LO + partner)
   const loBlock = lo
     ? `<p style="margin:0 0 2px;font-size:12px;font-weight:700;color:#FFFFFF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">${esc(lo.loName)} &middot; JWH Financial</p><p style="margin:0 0 8px;font-size:10px;color:${B.light};font-family:'Courier New',monospace;">${esc(lo.loEmail)}${lo.loPhone?' &middot; '+esc(lo.loPhone):''}${lo.loNmls?' &middot; NMLS #'+esc(lo.loNmls):''}</p>`
     : `<p style="margin:0 0 2px;font-size:12px;font-weight:700;color:#FFFFFF;">JWH Financial &middot; Mortgage &amp; Real Estate Digest</p><p style="margin:0 0 8px;font-size:10px;color:${B.light};font-family:'Courier New',monospace;">mortgage-digest@jwhfinance.com</p>`;
   const partnerContact = (partner && partner.partnerName)
     ? `<p style="margin:8px 0 0;font-size:10px;color:${B.light};line-height:1.6;border-top:1px solid #1f2937;padding-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Brought to you in partnership with <strong style="color:#FFFFFF;">${esc(partner.partnerName)}</strong>${partner.partnerContact?' &middot; '+esc(partner.partnerContact):''}${partner.partnerPhone?' &middot; '+esc(partner.partnerPhone):''}</p>`
     : '';
-  let body = variant.html || '';
-  if (headerBlock) {
-    if (body.includes('<!-- HEADER -->')) body = body.replace('<!-- HEADER -->', headerBlock + '<!-- HEADER -->');
-    else body = body.replace(/(<tr><td style="background:#3B6FE8;height:5px[^<]*<\/td><\/tr>)/i, `$1${headerBlock}`);
-  }
   const footerRe = /<!-- FOOTER_CONTACT -->[\s\S]*?<!-- \/FOOTER_CONTACT -->/;
   if (footerRe.test(body)) body = body.replace(footerRe, loBlock + partnerContact);
+
   return body;
 }
 
@@ -142,9 +191,23 @@ console.log(`[SEND] variant '${variantType}': ${totalUnsent} unsent, sending ${c
 
 // Tag whether the variant is fully drained this run, so the workflow knows
 // whether to Mark Complete now or leave 'sending' for the next tick.
-chunk.forEach(item => { item.json._moreRemain = moreRemain; });
+// _skipSend=false marks these as real recipients (the "Has Recipient?" IF routes on it).
+chunk.forEach(item => { item.json._moreRemain = moreRemain; item.json._skipSend = false; });
 
+// ZERO-UNSENT HARDENING — never return an empty array.
+// If this variant has no one left to send (all already sent today, or none match),
+// n8n would otherwise stop the branch on empty output and the variant would never
+// reach Mark Complete — so the cursor would re-pick it forever and the run would
+// halt before advancing to the next variant. Instead, emit ONE control item flagged
+// _skipSend so the workflow can skip Gmail/Log and go straight to Mark Complete.
 if (chunk.length === 0) {
-  console.log(`[SEND] variant '${variantType}' has no unsent recipients — safe to mark complete.`);
+  console.log(`[SEND] variant '${variantType}' has no unsent recipients — emitting control item to mark complete & advance.`);
+  return [{ json: {
+    _skipSend: true,        // "Has Recipient?" IF sends this down the skip-Gmail branch
+    _moreRemain: false,     // nothing left, so the variant is fully drained → mark complete
+    _variantType: variantType,
+    _variantRow: variant._row || null,
+    rowKey: variant.rowKey || null,
+  }}];
 }
 return chunk;

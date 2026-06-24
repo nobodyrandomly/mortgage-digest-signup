@@ -14,8 +14,8 @@ const MAX_ATTEMPTS = 3;
 const STALE_MIN = 10;   // re-claim a 'generating' row stuck longer than this
 
 const queue = $('Read GenQueue').all().map(i => i.json);
-const skews = $('Read SkewConfig').all().map(i => i.json);
-const TODAY = new Date().toISOString().slice(0, 10);
+const skews = $('Skew for Prompt').all().map(i => i.json);
+const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // Pacific business day (was UTC) — keeps rowKey build and send filter on the same calendar day
 const now = Date.now();
 
 const todays = queue.filter(r => (r.genDate || '') === TODAY);

@@ -38,6 +38,11 @@ const urlUnverified = stories.filter(s => s._urlUnverified).length;
 // HTML size (useful for catching cell-limit risk / bloat)
 const htmlChars = (built.html || '').length;
 
+// Length-check verdict, if the Digest Length Check node ran upstream. Lets the log
+// record WHICH variants were ok / warn / over (over = written as a non-sendable
+// marker, not actually saved/sent). Falls back gracefully if the node isn't present.
+const lengthStatus = safe(() => $('Digest Length Check').item.json._lengthStatus, '');
+
 const row = {
   loggedAt: new Date().toISOString(),
   digestDate: parsed.date || '',
@@ -60,6 +65,7 @@ const row = {
   urlUnverifiedStories: urlUnverified,
 
   htmlChars,
+  lengthStatus,   // '' | 'ok' | 'warn' | 'over'
   skewUsed: (variant.promptInstruction || '').slice(0, 200),  // first 200 chars of the skew, for reference
 
   searchQueryCount: Array.isArray(parsed._searchQueries) ? parsed._searchQueries.length : '',

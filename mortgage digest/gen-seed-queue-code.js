@@ -10,7 +10,7 @@
 
 const skewRows = $('Skews to Queue').all().map(i => i.json);
 const subRows  = $('Subscribers to Queue').all().map(i => i.json);
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // Pacific business day (was UTC) — keeps rowKey build and send filter on the same calendar day
 
 const isTrue = (v) => v===true || v===1 ||
   (typeof v==='string' && ['true','1','yes','y'].includes(v.trim().toLowerCase()));

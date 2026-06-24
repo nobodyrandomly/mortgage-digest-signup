@@ -131,20 +131,28 @@ export default function DigestSignup() {
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle");
 
-  // Partner co-branding — read ?partner= from URL, fetch config, render branded.
+  // Partner co-branding — render branded from the URL, then fetch config.
+  // Production URL form: newsdigest.jwhfinance.com/<pagePath>  (path segment)
+  // Legacy/LO forms still work: ?partner=ID and ?lo=ID  (query params)
   // Renders instantly with JWH defaults; partner branding applies when config arrives.
   const [partner, setPartner] = useState(null);
   useEffect(() => {
-    let partnerId = "", loId = "";
+    let partnerId = "", loId = "", pagePath = "";
     try {
       const params = new URLSearchParams(window.location.search);
       partnerId = params.get("partner") || "";
       loId = params.get("lo") || "";
-    } catch { partnerId = ""; loId = ""; }
-    if (!partnerId && !loId) return;
-    const queryStr = partnerId
-      ? `partner=${encodeURIComponent(partnerId)}`
-      : `lo=${encodeURIComponent(loId)}`;
+      // First non-empty path segment, e.g. /smith-realty -> "smith-realty"
+      pagePath = (window.location.pathname.split("/").filter(Boolean)[0] || "").trim();
+    } catch { partnerId = ""; loId = ""; pagePath = ""; }
+    if (!partnerId && !loId && !pagePath) return;
+    // Precedence: path slug (production) -> ?partner= -> ?lo=
+    // The webhook resolves ?path= against pagePath (falling back to partnerId).
+    const queryStr = pagePath
+      ? `path=${encodeURIComponent(pagePath)}`
+      : partnerId
+        ? `partner=${encodeURIComponent(partnerId)}`
+        : `lo=${encodeURIComponent(loId)}`;
     let cancelled = false;
     (async () => {
       try {

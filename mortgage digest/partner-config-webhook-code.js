@@ -1,12 +1,16 @@
 // PARTNER / LO CONFIG WEBHOOK
 // GET endpoint the signup page calls to fetch branding for either:
-//   ?partner=ID  → full partner co-branding (partner + its LO)
+//   ?path=SLUG   → production URL form (newsdigest.jwhfinance.com/<pagePath>);
+//                  matches the Partners 'pagePath' column, falling back to partnerId
+//   ?partner=ID  → full partner co-branding (legacy/query form)
 //   ?lo=ID       → LO-only branding (no partner bar), for LOs building their own network
-// Returns only public-safe fields.
+// Returns only public-safe fields. The response always carries the partner's real
+// partnerId, so the signup payload + all downstream routing stay unchanged.
 //
-// Path: /webhook/partner-config?partner=smith-realty  OR  ?lo=bobby-mir
+// Path: /webhook/partner-config?path=smith-realty  OR  ?partner=smith-realty  OR  ?lo=bobby-mir
 
 const q = $('Partner Config Webhook').item.json.query || {};
+const reqPath = (q.path || '').trim().toLowerCase();
 const reqPartner = (q.partner || '').trim().toLowerCase();
 const reqLo = (q.lo || '').trim().toLowerCase();
 
@@ -25,29 +29,47 @@ const findLo = (loId) => los.find(l =>
   && (l.loActive === undefined || isTrue(l.loActive))
 );
 
-// ── Partner path (takes precedence if both supplied) ──
+// Build the public partner-branding response from a Partners row.
+const buildPartnerResponse = (partner) => {
+  const lo = findLo(partner.loId);
+  return [{ json: {
+    found: true,
+    mode: 'partner',
+    partnerId: String(partner.partnerId || '').trim().toLowerCase(),
+    partnerName: partner.partnerName || '',
+    partnerType: (partner.partnerType || '').trim().toLowerCase(),
+    partnerColor: /^#[0-9a-fA-F]{6}$/.test(partner.partnerColor || '') ? partner.partnerColor : '',
+    partnerLogo: /^https?:\/\//.test(partner.partnerLogo || '') ? partner.partnerLogo : '',
+    loId: String(partner.loId || '').trim().toLowerCase(),
+    loName: lo ? (lo.loName || '') : '',
+  }}];
+};
+
+// ── Path slug (production: /<pagePath>) — takes precedence ──
+// pagePath is the authoritative public slug. If a partner has no pagePath set, we
+// fall back to matching their partnerId, so clean-slug partners need no extra setup
+// and nothing breaks when pagePath is blank.
+if (reqPath) {
+  let partner = partners.find(p =>
+    String(p.pagePath || '').trim().toLowerCase() === reqPath && isTrue(p.active)
+  );
+  if (!partner) {
+    partner = partners.find(p =>
+      String(p.partnerId || '').trim().toLowerCase() === reqPath && isTrue(p.active)
+    );
+  }
+  return partner ? buildPartnerResponse(partner) : [{ json: { found: false } }];
+}
+
+// ── Partner path (?partner=) ──
 if (reqPartner) {
   const partner = partners.find(p =>
     String(p.partnerId || '').trim().toLowerCase() === reqPartner && isTrue(p.active)
   );
-  if (partner) {
-    const lo = findLo(partner.loId);
-    return [{ json: {
-      found: true,
-      mode: 'partner',
-      partnerId: reqPartner,
-      partnerName: partner.partnerName || '',
-      partnerType: (partner.partnerType || '').trim().toLowerCase(),
-      partnerColor: /^#[0-9a-fA-F]{6}$/.test(partner.partnerColor || '') ? partner.partnerColor : '',
-      partnerLogo: /^https?:\/\//.test(partner.partnerLogo || '') ? partner.partnerLogo : '',
-      loId: String(partner.loId || '').trim().toLowerCase(),
-      loName: lo ? (lo.loName || '') : '',
-    }}];
-  }
-  return [{ json: { found: false } }];
+  return partner ? buildPartnerResponse(partner) : [{ json: { found: false } }];
 }
 
-// ── LO-only path ──
+// ── LO-only path (?lo=) ──
 if (reqLo) {
   const lo = findLo(reqLo);
   if (lo) {
