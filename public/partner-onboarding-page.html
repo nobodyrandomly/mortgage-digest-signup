@@ -18,6 +18,7 @@
       --text: #0D1321;
       --muted: #6B7280;
       --light: #9CA3AF;
+      --chip: #F3F4F6;
     }
 
     * {
@@ -43,51 +44,43 @@
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 28px 26px;
+      padding: 30px 30px 32px;
       box-shadow: 0 1px 3px rgba(13, 19, 33, .04);
     }
 
+    /* ── Brand header ── */
     .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 6px;
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .brand .dot {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-      background: var(--navy);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 16px;
+    .brand .logo {
+      height: 38px;
+      width: auto;
+      max-width: 100%;
+      display: block;
     }
 
-    .brand .name {
-      font-weight: 800;
-      font-size: 15px;
-      letter-spacing: .01em;
-    }
-
-    .brand .sub {
+    .brand .brand-sub {
       font-size: 12px;
       color: var(--muted);
+      margin-top: 9px;
+      font-weight: 600;
+      letter-spacing: .02em;
     }
 
     h1 {
-      font-size: 20px;
-      margin: 18px 0 4px;
+      font-size: 21px;
+      margin: 2px 0 6px;
       font-weight: 800;
+      letter-spacing: -.01em;
     }
 
     .lead {
       font-size: 14px;
       color: var(--muted);
-      margin: 0 0 20px;
+      margin: 0 0 22px;
     }
 
     .lo-pill {
@@ -99,8 +92,13 @@
       color: #2548B0;
       font-size: 12.5px;
       font-weight: 700;
-      padding: 6px 12px;
+      padding: 7px 13px;
       border-radius: 20px;
+      margin-bottom: 24px;
+    }
+
+    /* ── Form fields ── */
+    .field {
       margin-bottom: 18px;
     }
 
@@ -109,7 +107,7 @@
       font-size: 12.5px;
       font-weight: 700;
       color: var(--text);
-      margin: 14px 0 6px;
+      margin: 0 0 7px;
     }
 
     .req {
@@ -119,9 +117,9 @@
     input[type=text],
     select {
       width: 100%;
-      padding: 11px 14px;
+      padding: 12px 14px;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border-radius: 9px;
       font-size: 14px;
       color: var(--text);
       outline: none;
@@ -129,11 +127,13 @@
       background: var(--card);
       appearance: none;
       -webkit-appearance: none;
+      transition: border-color .15s, box-shadow .15s;
     }
 
     input:focus,
     select:focus {
       border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 111, 232, .12);
     }
 
     select {
@@ -142,32 +142,80 @@
       background-position: right 14px center;
     }
 
+    /* ── Color picker ── */
     .color-row {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    input[type=color] {
-      width: 52px;
-      height: 42px;
-      padding: 0;
+    .swatch {
+      position: relative;
+      width: 56px;
+      height: 44px;
+      border-radius: 10px;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
-      background: none;
+      overflow: hidden;
       cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .swatch input[type=color] {
+      position: absolute;
+      top: -25%;
+      left: -25%;
+      width: 150%;
+      height: 150%;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      background: none;
     }
 
     .hex {
-      font-family: "Courier New", monospace;
+      font-family: ui-monospace, "SF Mono", "Courier New", monospace;
       font-size: 13px;
-      color: var(--muted);
+      font-weight: 600;
+      color: var(--text);
+      background: var(--chip);
+      padding: 7px 11px;
+      border-radius: 8px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
     }
 
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .preset {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      box-shadow: inset 0 0 0 1px rgba(13, 19, 33, .10);
+      padding: 0;
+      transition: transform .08s;
+    }
+
+    .preset:hover {
+      transform: scale(1.08);
+    }
+
+    .preset.sel {
+      border-color: var(--text);
+    }
+
+    /* ── Logo dropzone ── */
     .drop {
       border: 1.5px dashed var(--border);
       border-radius: 10px;
-      padding: 18px;
+      padding: 20px;
       text-align: center;
       cursor: pointer;
       transition: border-color .15s, background .15s;
@@ -203,22 +251,27 @@
     .err {
       color: var(--red);
       font-size: 12px;
-      margin-top: 5px;
+      margin-top: 6px;
       display: none;
     }
 
     .btn {
       width: 100%;
-      margin-top: 22px;
-      padding: 13px;
+      margin-top: 26px;
+      padding: 14px;
       border: none;
-      border-radius: 9px;
+      border-radius: 10px;
       cursor: pointer;
       background: var(--navy);
       color: #fff;
       font-size: 15px;
       font-weight: 700;
       font-family: inherit;
+      transition: opacity .15s;
+    }
+
+    .btn:hover {
+      opacity: .92;
     }
 
     .btn:disabled {
@@ -249,23 +302,29 @@
     .live-url {
       display: flex;
       gap: 8px;
-      margin-top: 14px;
+      margin-top: 16px;
     }
 
     .live-url input {
       flex: 1;
-      font-family: "Courier New", monospace;
+      font-family: ui-monospace, "SF Mono", "Courier New", monospace;
       font-size: 13px;
     }
 
     .copy {
-      padding: 0 16px;
+      padding: 0 18px;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border-radius: 9px;
       background: #fff;
       cursor: pointer;
       font-weight: 700;
       font-size: 13px;
+      font-family: inherit;
+    }
+
+    .copy:hover {
+      border-color: var(--blue);
+      color: var(--blue);
     }
 
     .success-ico {
@@ -278,7 +337,7 @@
       align-items: center;
       justify-content: center;
       font-size: 28px;
-      margin: 0 auto 14px;
+      margin: 8px auto 16px;
     }
 
     .hidden {
@@ -289,7 +348,7 @@
       text-align: center;
       font-size: 11.5px;
       color: var(--light);
-      margin-top: 22px;
+      margin-top: 24px;
     }
   </style>
 </head>
@@ -298,11 +357,9 @@
   <div class="wrap">
     <div class="card">
       <div class="brand">
-        <div class="dot">JW</div>
-        <div>
-          <div class="name">JWH Financial</div>
-          <div class="sub">Mortgage &amp; Real Estate Digest</div>
-        </div>
+        <img class="logo" src="https://jwhfinance.com/wp-content/uploads/2022/05/Horizontal_Logo-Transparent.png"
+          alt="JWH Financial" />
+        <div class="brand-sub">Mortgage &amp; Real Estate Digest</div>
       </div>
 
       <!-- LOADING -->
@@ -323,32 +380,43 @@
         <p class="lead">Add your logo and brand color, and your personalized digest page goes live instantly.</p>
         <div class="lo-pill">★ Co-branded with <span id="loName">your loan officer</span></div>
 
-        <label>Business name <span class="req">*</span></label>
-        <input type="text" id="partnerName" placeholder="e.g. Smith Realty Group" maxlength="80" />
-        <div class="err" id="nameErr">Please enter your business name.</div>
-
-        <label>Business type <span class="req">*</span></label>
-        <select id="partnerType">
-          <option value="realtor">Realtor / Real Estate Agent</option>
-          <option value="attorney">Attorney</option>
-          <option value="builder">Builder / Developer</option>
-          <option value="general">General / Other</option>
-        </select>
-
-        <label>Brand color</label>
-        <div class="color-row">
-          <input type="color" id="partnerColor" value="#3B6FE8" />
-          <span class="hex" id="hexLabel">#3B6FE8</span>
+        <div class="field">
+          <label>Business name <span class="req">*</span></label>
+          <input type="text" id="partnerName" placeholder="e.g. Smith Realty Group" maxlength="80" />
+          <div class="err" id="nameErr">Please enter your business name.</div>
         </div>
 
-        <label>Logo <span class="req">*</span></label>
-        <div class="drop" id="dropZone">
-          <img id="logoPreview" alt="logo preview" />
-          <div class="hint" id="dropHint"><b>Click to upload</b> &mdash; PNG or JPG, transparent background works best
+        <div class="field">
+          <label>Business type <span class="req">*</span></label>
+          <select id="partnerType">
+            <option value="realtor">Realtor / Real Estate Agent</option>
+            <option value="attorney">Attorney</option>
+            <option value="builder">Builder / Developer</option>
+            <option value="general">General / Other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Brand color</label>
+          <div class="color-row">
+            <span class="swatch">
+              <input type="color" id="partnerColor" value="#3B6FE8" />
+            </span>
+            <span class="hex" id="hexLabel">#3B6FE8</span>
           </div>
+          <div class="presets" id="presets"></div>
         </div>
-        <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml" class="hidden" />
-        <div class="err" id="logoErr">Please upload a logo image (under 2&nbsp;MB).</div>
+
+        <div class="field">
+          <label>Logo <span class="req">*</span></label>
+          <div class="drop" id="dropZone">
+            <img id="logoPreview" alt="logo preview" />
+            <div class="hint" id="dropHint"><b>Click to upload</b> &mdash; PNG or JPG, transparent background works best
+            </div>
+          </div>
+          <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml" class="hidden" />
+          <div class="err" id="logoErr">Please upload a logo image (under 2&nbsp;MB).</div>
+        </div>
 
         <button class="btn" id="submitBtn">Publish my page</button>
         <div class="err center" id="submitErr" style="margin-top:14px;"></div>
@@ -413,8 +481,31 @@
         .catch(function () { show("invalidState"); });
     })();
 
-    /* Color picker label */
-    $("partnerColor").addEventListener("input", function () { $("hexLabel").textContent = this.value; });
+    /* ── Color picker: presets + swatch + hex, kept in sync ── */
+    var PRESETS = ["#3B6FE8", "#0D1321", "#059669", "#0D9488", "#7C3AED", "#DC2626", "#D97706", "#475569"];
+    function normHex(v) { return (v || "").trim().toUpperCase(); }
+    function syncColor(val) {
+      var v = normHex(val);
+      $("partnerColor").value = v;
+      $("hexLabel").textContent = v;
+      var chips = document.querySelectorAll(".preset");
+      chips.forEach(function (c) { c.classList.toggle("sel", normHex(c.dataset.color) === v); });
+    }
+    (function buildPresets() {
+      var box = $("presets");
+      PRESETS.forEach(function (hex) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "preset";
+        b.dataset.color = hex;
+        b.style.background = hex;
+        b.title = hex;
+        b.addEventListener("click", function () { syncColor(hex); });
+        box.appendChild(b);
+      });
+      syncColor($("partnerColor").value);
+    })();
+    $("partnerColor").addEventListener("input", function () { syncColor(this.value); });
 
     /* Logo upload UX */
     $("dropZone").addEventListener("click", function () { $("logoFile").click(); });
