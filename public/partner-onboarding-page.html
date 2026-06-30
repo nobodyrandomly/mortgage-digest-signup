@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
-  <title>Partner Onboarding — Mortgage &amp; Real Estate Digest</title>
+  <title>Customize your branded digest — JWH Financial</title>
   <style>
     :root {
       --navy: #0D1321;
@@ -42,25 +42,14 @@
       box-shadow: 0 1px 3px rgba(13, 19, 33, .04);
     }
 
-    /* ── Brand header ── */
-    .brand { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
-    .brand .logo { height: 52px; width: auto; max-width: 100%; display: block; }
-    .brand .brand-sub { font-size: 12px; color: var(--muted); margin-top: 10px; font-weight: 600; letter-spacing: .02em; }
+    /* ── Brand header (centered) ── */
+    .brand { text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .brand .logo { width: 215px; max-width: 72%; height: auto; display: block; margin: 0 auto 11px; }
+    .brand .brand-sub { font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .03em; }
+    .brand .brand-lo { font-size: 12px; color: var(--light); margin-top: 8px; }
 
     h1 { font-size: 21px; margin: 2px 0 6px; font-weight: 800; letter-spacing: -.01em; }
-    .lead { font-size: 14px; color: var(--muted); margin: 0 0 22px; }
-
-    .lo-pill {
-      display: inline-block;
-      background: #F1F5FF;
-      border: 1px solid #DCE6FF;
-      color: #2548B0;
-      font-size: 12.5px;
-      font-weight: 700;
-      padding: 7px 13px;
-      border-radius: 20px;
-      margin-bottom: 24px;
-    }
+    .lead { font-size: 14px; color: var(--muted); margin: 0 0 24px; }
 
     /* ── Form fields ── */
     .field { margin-bottom: 18px; }
@@ -87,11 +76,16 @@
     input:focus,
     select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59, 111, 232, .12); }
 
+    select { color: var(--text); }
+    select:invalid { color: var(--light); }   /* "Select one…" placeholder looks muted */
+
     select {
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/></svg>");
       background-repeat: no-repeat;
       background-position: right 14px center;
     }
+
+    .field-note { font-size: 11.5px; color: var(--light); margin-top: 7px; }
 
     /* ── Color pickers ── */
     .color-row { display: flex; align-items: center; gap: 12px; }
@@ -129,14 +123,22 @@
     .preset:hover { transform: scale(1.08); }
     .preset.sel { border-color: var(--text); }
 
-    .auto-badge {
+    .sec-label-row { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; }
+    .sec-label-row label { margin: 0; }
+    .state-badge {
       display: inline-block; font-size: 10px; font-weight: 700;
       letter-spacing: .04em; text-transform: uppercase;
       color: var(--blue); background: #EEF2FF; border: 1px solid #DCE6FF;
-      padding: 2px 7px; border-radius: 10px; margin-left: 6px;
-      vertical-align: middle; cursor: pointer; user-select: none;
+      padding: 2px 7px; border-radius: 10px;
     }
-    .auto-badge.custom { color: var(--muted); background: var(--chip); border-color: var(--border); }
+    .state-badge.custom { color: var(--muted); background: var(--chip); border-color: var(--border); }
+    .reset-auto {
+      display: none; border: none; background: none; padding: 0; margin-left: auto;
+      font-family: inherit; font-size: 11px; font-weight: 700; color: var(--blue);
+      cursor: pointer; text-decoration: underline;
+    }
+    .reset-auto.show { display: inline; }
+
     .sec-note { font-size: 11.5px; color: var(--light); margin-top: 8px; }
     .sec-hint {
       display: none; margin-top: 10px; font-size: 12px; line-height: 1.45;
@@ -198,6 +200,7 @@
         <img class="logo" src="https://jwhfinance.com/wp-content/uploads/2022/05/Horizontal_Logo-Transparent.png"
           alt="JWH Financial" />
         <div class="brand-sub">Mortgage &amp; Real Estate Digest</div>
+        <div class="brand-lo" id="brandLo"></div>
       </div>
 
       <!-- LOADING -->
@@ -214,9 +217,8 @@
 
       <!-- FORM -->
       <div id="formState" class="hidden">
-        <h1>Set up your co-branded page</h1>
-        <p class="lead">Add your logo and brand colors, and your personalized digest page goes live instantly.</p>
-        <div class="lo-pill">★ Co-branded with <span id="loName">your loan officer</span></div>
+        <h1>Customize your branded mortgage &amp; real estate digest</h1>
+        <p class="lead">A done-for-you newsletter and signup page you can share with clients and prospects, co-branded for you.</p>
 
         <div class="field">
           <label>Business name <span class="req">*</span></label>
@@ -226,12 +228,36 @@
 
         <div class="field">
           <label>Business type <span class="req">*</span></label>
-          <select id="partnerType">
+          <select id="partnerType" required>
+            <option value="" disabled selected>Select one…</option>
             <option value="realtor">Realtor / Real Estate Agent</option>
             <option value="attorney">Attorney</option>
             <option value="builder">Builder / Developer</option>
             <option value="general">General / Other</option>
           </select>
+          <div class="err" id="typeErr">Please choose a business type.</div>
+        </div>
+
+        <div class="field">
+          <label>Licensing entity <span class="req" id="licReq" style="display:none">*</span></label>
+          <select id="licenseEntity" required>
+            <option value="" disabled selected>Select one…</option>
+            <option value="DRE">DRE — Dept. of Real Estate</option>
+            <option value="BRE">BRE — Bureau of Real Estate</option>
+            <option value="DBO">DBO — Dept. of Business Oversight</option>
+            <option value="NMLS">NMLS</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" id="licenseEntityOther" placeholder="Name of licensing entity" maxlength="60"
+            style="margin-top:8px; display:none;" />
+          <div class="field-note">Required for licensed real estate agents; optional otherwise.</div>
+          <div class="err" id="licEntityErr">Please provide your licensing entity.</div>
+        </div>
+
+        <div class="field">
+          <label>License number <span class="req" id="licNumReq" style="display:none">*</span></label>
+          <input type="text" id="licenseNumber" placeholder="e.g. 01234567" maxlength="40" />
+          <div class="err" id="licNumErr">Please provide your license number.</div>
         </div>
 
         <div class="field">
@@ -244,13 +270,17 @@
         </div>
 
         <div class="field">
-          <label>Secondary color <span class="auto-badge" id="secBadge" title="Suggested from your primary color — click to reset">Auto</span></label>
+          <div class="sec-label-row">
+            <label>Secondary color</label>
+            <span class="state-badge" id="secBadge">Auto</span>
+            <button type="button" class="reset-auto" id="resetAuto">Reset to Auto</button>
+          </div>
           <div class="color-row">
             <span class="swatch"><input type="color" id="partnerColor2" value="#3B6FE8" /></span>
             <span class="hex" id="hexLabel2">#3B6FE8</span>
           </div>
           <div class="sec-note">Recommended from your primary color — adjust it if you like.</div>
-          <div class="sec-hint" id="secHint">This is close to your primary color, so the two sections of your digest would look too similar — we&rsquo;ll automatically use a more distinct shade instead. To control the secondary yourself, pick a color that&rsquo;s noticeably different in hue, or tap &ldquo;Auto&rdquo; to use our recommendation.</div>
+          <div class="sec-hint" id="secHint">This is close to your primary color, so the two sections of your digest would look too similar — we&rsquo;ll automatically use a more distinct shade instead. To control the secondary yourself, pick a color that&rsquo;s noticeably different in hue, or click &ldquo;Reset to Auto&rdquo; to use our recommendation.</div>
         </div>
 
         <div class="field">
@@ -320,7 +350,7 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data && data.found) {
-            $("loName").textContent = data.loName || "your loan officer";
+            $("brandLo").textContent = "Co-branded with " + (data.loName || "your loan officer");
             show("formState");
           } else { show("invalidState"); }
         })
@@ -331,8 +361,6 @@
        Color math — ported verbatim from build-partner-palette.js so the secondary
        suggested here is EXACTLY what the palette engine derives from one color.
        deriveSecondary: hue +90°, saturation floored at 0.42, lightness 0.40–0.52.
-       (The engine honors a partner secondary only if its hue is ≥30° from primary;
-       a +90° suggestion clears that, so what they see is what they get.)
        ───────────────────────────────────────────────────────────────────────── */
     function clamp(n) { return Math.max(0, Math.min(255, Math.round(n))); }
     function hexToRgb(hex) {
@@ -384,7 +412,6 @@
       hsl.l = Math.min(0.52, Math.max(0.40, hsl.l));
       return hslToHex(hsl);
     }
-    // hue distance (0–180). The engine treats <30° as "too similar" and re-derives.
     function hueGap(a, b) {
       var d = Math.abs(hexToHsl(a).h - hexToHsl(b).h);
       return d > 180 ? 360 - d : d;
@@ -396,7 +423,7 @@
 
     /* ── Color picker state: primary + presets, secondary auto/custom ── */
     var PRESETS = ["#3B6FE8", "#0D1321", "#059669", "#0D9488", "#7C3AED", "#DC2626", "#D97706", "#475569"];
-    var secAuto = true;  // secondary follows the primary until the partner edits it
+    var secAuto = true;
 
     function normHex(v) { return (v || "").trim().toUpperCase(); }
 
@@ -419,6 +446,7 @@
       var badge = $("secBadge");
       badge.textContent = secAuto ? "Auto" : "Custom";
       badge.classList.toggle("custom", !secAuto);
+      $("resetAuto").classList.toggle("show", !secAuto);
       refreshSecHint();
     }
 
@@ -434,14 +462,27 @@
         b.addEventListener("click", function () { setPrimary(hex); });
         box.appendChild(b);
       });
-      setPrimary($("partnerColor").value);   // seed primary + auto-derive secondary
+      setPrimary($("partnerColor").value);
     })();
 
     $("partnerColor").addEventListener("input", function () { setPrimary(this.value); });
     $("partnerColor2").addEventListener("input", function () { setSecondary(this.value, false); });
-    $("secBadge").addEventListener("click", function () {
-      // click the badge to re-enable Auto and re-derive from the current primary
-      if (!secAuto) { secAuto = true; setSecondary(deriveSecondary($("partnerColor").value), true); }
+    $("resetAuto").addEventListener("click", function () {
+      secAuto = true;
+      setSecondary(deriveSecondary($("partnerColor").value), true);
+    });
+
+    /* ── License fields: required-asterisks for realtor, conditional "Other" ── */
+    function refreshLicenseUI() {
+      var isRealtor = $("partnerType").value === "realtor";
+      $("licReq").style.display = isRealtor ? "inline" : "none";
+      $("licNumReq").style.display = isRealtor ? "inline" : "none";
+    }
+    $("partnerType").addEventListener("change", refreshLicenseUI);
+    $("licenseEntity").addEventListener("change", function () {
+      var other = this.value === "Other";
+      $("licenseEntityOther").style.display = other ? "block" : "none";
+      if (!other) $("licenseEntityOther").value = "";
     });
 
     /* Logo upload UX */
@@ -464,12 +505,23 @@
     /* Submit */
     $("submitBtn").addEventListener("click", function () {
       var name = $("partnerName").value.trim();
+      var type = $("partnerType").value;
       var file = $("logoFile").files[0];
+
+      var entitySel = $("licenseEntity").value;
+      var entityOther = $("licenseEntityOther").value.trim();
+      var licenseEntity = entitySel === "Other" ? entityOther : entitySel;
+      var licenseNumber = $("licenseNumber").value.trim();
+      var isRealtor = type === "realtor";
+
       var ok = true;
-      $("nameErr").style.display = "none";
-      $("logoErr").style.display = "none";
-      $("submitErr").style.display = "none";
+      ["nameErr", "typeErr", "licEntityErr", "licNumErr", "logoErr", "submitErr"].forEach(function (id) {
+        $(id).style.display = "none";
+      });
       if (!name) { $("nameErr").style.display = "block"; ok = false; }
+      if (!type) { $("typeErr").style.display = "block"; ok = false; }
+      if (isRealtor && !licenseEntity) { $("licEntityErr").style.display = "block"; ok = false; }
+      if (isRealtor && !licenseNumber) { $("licNumErr").style.display = "block"; ok = false; }
       if (!file) { $("logoErr").style.display = "block"; ok = false; }
       if (!ok) return;
 
@@ -492,9 +544,11 @@
               action: "create",
               t: token, lo: loTest,
               partnerName: name,
-              partnerType: $("partnerType").value,
+              partnerType: type,
               partnerColor: $("partnerColor").value,
               partnerColor2: $("partnerColor2").value,
+              partnerLicenseEntity: licenseEntity,
+              partnerLicenseNumber: licenseNumber,
               partnerLogo: logoUrl
             })
           });
