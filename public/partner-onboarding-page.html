@@ -227,6 +227,24 @@
         </div>
 
         <div class="field">
+          <label>Contact name <span class="req">*</span></label>
+          <input type="text" id="partnerContact" placeholder="e.g. Jane Smith" maxlength="80" />
+          <div class="err" id="contactErr">Please enter a contact name.</div>
+        </div>
+
+        <div class="field">
+          <label>Contact email <span class="req">*</span></label>
+          <input type="text" id="partnerEmail" placeholder="e.g. jane@smithrealty.com" maxlength="120" />
+          <div class="err" id="emailErr">Please enter a valid email address.</div>
+        </div>
+
+        <div class="field">
+          <label>Contact phone</label>
+          <input type="text" id="partnerPhone" placeholder="e.g. (949) 555-0100" maxlength="30" />
+          <div class="field-note">Your contact details appear in the footer of your co-branded digest so clients can reach you.</div>
+        </div>
+
+        <div class="field">
           <label>Business type <span class="req">*</span></label>
           <select id="partnerType" required>
             <option value="" disabled selected>Select one…</option>
@@ -505,6 +523,9 @@
     /* Submit */
     $("submitBtn").addEventListener("click", function () {
       var name = $("partnerName").value.trim();
+      var contact = $("partnerContact").value.trim();
+      var email = $("partnerEmail").value.trim();
+      var phone = $("partnerPhone").value.trim();
       var type = $("partnerType").value;
       var file = $("logoFile").files[0];
 
@@ -515,10 +536,12 @@
       var isRealtor = type === "realtor";
 
       var ok = true;
-      ["nameErr", "typeErr", "licEntityErr", "licNumErr", "logoErr", "submitErr"].forEach(function (id) {
+      ["nameErr", "contactErr", "emailErr", "typeErr", "licEntityErr", "licNumErr", "logoErr", "submitErr"].forEach(function (id) {
         $(id).style.display = "none";
       });
       if (!name) { $("nameErr").style.display = "block"; ok = false; }
+      if (!contact) { $("contactErr").style.display = "block"; ok = false; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("emailErr").style.display = "block"; ok = false; }
       if (!type) { $("typeErr").style.display = "block"; ok = false; }
       if (isRealtor && !licenseEntity) { $("licEntityErr").style.display = "block"; ok = false; }
       if (isRealtor && !licenseNumber) { $("licNumErr").style.display = "block"; ok = false; }
@@ -544,6 +567,9 @@
               action: "create",
               t: token, lo: loTest,
               partnerName: name,
+              partnerContact: contact,
+              partnerEmail: email,
+              partnerPhone: phone,
               partnerType: type,
               partnerColor: $("partnerColor").value,
               partnerColor2: $("partnerColor2").value,
